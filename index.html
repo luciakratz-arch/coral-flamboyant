@@ -834,6 +834,22 @@ function generatePDF(htmlContent, filename) {
   setTimeout(()=>URL.revokeObjectURL(url), 5000);
 }
 
+
+// QR Code generator using Google Charts API
+function generateQRCode(text) {
+  const encoded = encodeURIComponent(text);
+  return `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encoded}&choe=UTF-8`;
+}
+
+// Save declaration to Firebase and return ID
+async function saveDeclaracao(data) {
+  const id = Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+  try {
+    await fbSave("declaracoes/" + id, { ...data, id, emitidaEm: new Date().toISOString().split("T")[0] });
+  } catch(e) { console.error(e); }
+  return id;
+}
+
 // ── RELATÓRIO PDF ─────────────────────────────────────────────
 function RelatorioTab({ members, events, songs, materials, pauloSig, luciaSig }) {
   const today = todayStr();
@@ -950,12 +966,12 @@ function RelatorioTab({ members, events, songs, materials, pauloSig, luciaSig })
         <!-- Assinaturas -->
         <div style="margin-top:48px;display:flex;justify-content:space-around;gap:40px;">
           <div style="text-align:center;flex:1;">
-            ${pauloSig?`<img src="${pauloSig}" style="height:60px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
+            ${pauloSig?`<img src="${pauloSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
             <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Paulo Sergio Motta</div>
             <div style="font-size:10px;color:#666;">Maestro</div>
           </div>
           <div style="text-align:center;flex:1;">
-            ${luciaSig?`<img src="${luciaSig}" style="height:60px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
+            ${luciaSig?`<img src="${luciaSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
             <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Lucia Kratz</div>
             <div style="font-size:10px;color:#666;">Produtora</div>
           </div>
@@ -1083,12 +1099,12 @@ function DeclaracaoTab({ member, events, pauloSig, luciaSig }) {
         </p>
         <div style="margin-top:48px;display:flex;justify-content:space-around;gap:40px;">
           <div style="text-align:center;flex:1;">
-            ${pauloSig?`<img src="${pauloSig}" style="height:55px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
+            ${pauloSig?`<img src="${pauloSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
             <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Paulo Sergio Motta</div>
             <div style="font-size:10px;color:#666;">Maestro — Coral Flamboyant</div>
           </div>
           <div style="text-align:center;flex:1;">
-            ${luciaSig?`<img src="${luciaSig}" style="height:55px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
+            ${luciaSig?`<img src="${luciaSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
             <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Lucia Kratz</div>
             <div style="font-size:10px;color:#666;">Produtora — Coral Flamboyant</div>
           </div>
@@ -1098,7 +1114,30 @@ function DeclaracaoTab({ member, events, pauloSig, luciaSig }) {
         </div>
       </div>
     </div>`;
-    generatePDF(html, `Declaracao_${member.name.replace(/ /g,"_")}`);
+    // Save to Firebase and generate QR
+    const declData = {
+      coral: "flamboyant",
+      nome: member.name,
+      funcao: VOICE_LABELS[member.voice] || "Corista",
+      startDate: startDate,
+      endDate: member.endDate || "",
+      apresentacoes: apresentacoes.map(e => `${fmtDate(e.date)} — ${e.title}`)
+    };
+    saveDeclaracao(declData).then(id => {
+      const verifyURL = `https://luciakratz-arch.github.io/coral-flamboyant/verificar.html?id=${id}`;
+      const qrURL = generateQRCode(verifyURL);
+      const htmlComQR = html.replace(
+        `<div style="margin-top:40px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">`,
+        `<div style="text-align:center;margin-top:24px;padding:16px;background:#fff5f5;border-radius:8px;border:1px solid #f0d0d0;">
+          <div style="font-size:11px;color:#B41020;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Verificação Online</div>
+          <img src="${qrURL}" style="width:100px;height:100px;display:block;margin:0 auto 8px;" alt="QR Code"/>
+          <div style="font-size:9px;color:#999;word-break:break-all;">${verifyURL}</div>
+          <div style="font-size:11px;color:#666;margin-top:6px;">📞 (62) 9 9148-9893 — Paulo Sergio Motta</div>
+        </div>
+        <div style="margin-top:40px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">`
+      );
+      generatePDF(htmlComQR, `Declaracao_${member.name.replace(/ /g,"_")}`);
+    });
   }
 
   return (
