@@ -7,1659 +7,706 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Lato',sans-serif; }
+    body { font-family:'Lato',sans-serif; background:#FAFAFA; }
     audio { accent-color:#B41020; }
-    [contenteditable]:empty:before { content:attr(data-placeholder); color:#bbb; }
+    ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:#ddd; border-radius:4px; }
+    .tab-btn { flex:1; padding:10px 0 8px; border:none; background:none; cursor:pointer; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; display:flex; flex-direction:column; align-items:center; gap:3px; font-family:inherit; transition:color 0.2s; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+    .modal-box { background:#fff; border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease; }
   </style>
 </head>
 <body>
-  <div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666;flex-direction:column;gap:12px"><div style="width:40px;height:40px;border:3px solid #B41020;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div><div>Carregando...</div></div></div>
-  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    
+<div id="root">
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#666">
+    <div style="width:40px;height:40px;border:3px solid #B41020;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <div style="font-family:sans-serif;font-size:14px">Carregando...</div>
+  </div>
+</div>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyDcLsndRbDPeUru_Di-h3w8RP_Ung-YSUo",
+  authDomain: "flamboyant-coral.firebaseapp.com",
+  projectId: "flamboyant-coral",
+  storageBucket: "flamboyant-coral.firebasestorage.app",
+  messagingSenderId: "15022873086",
+  appId: "1:15022873086:web:507d97757035ac90d108af"
+});
+const db = firebase.firestore();
+</script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
 
+// ── CONSTANTES ──────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = "1234";
-const C = {
-  vermelho: "#B41020", verde: "#1B5E20", branco: "#FFFFFF",
-  fundo: "#FAFAFA", borda: "#E8E0E0", texto: "#1A1A1A",
-  textoSub: "#666666", textoLeve: "#999999",
-};
-const VOICE_LABELS = { soprano: "Soprano", contralto: "Contralto", alto: "Alto", tenor: "Tenor", baixo: "Baixo" };
-const VOICE_COLORS = { soprano: "#B41020", contralto: "#7B1FA2", alto: "#E65100", tenor: "#1565C0", baixo: "#1B5E20" };
+const C = { vermelho:"#B41020", verde:"#1B5E20", branco:"#FFFFFF", fundo:"#FAFAFA", borda:"#E8E0E0", texto:"#1A1A1A", textoSub:"#666666", textoLeve:"#999999" };
+const VOICE_LABELS = { soprano:"Soprano", contralto:"Contralto", alto:"Alto", tenor:"Tenor", baixo:"Baixo" };
+const VOICE_COLORS = { soprano:"#B41020", contralto:"#7B1FA2", alto:"#E65100", tenor:"#1565C0", baixo:"#1B5E20" };
 const FILE_FIELDS = [
-  { key:"original",   label:"Música Original", icon:"♩", type:"audio" },
-  { key:"playback",   label:"Playback",         icon:"♪", type:"audio" },
-  { key:"partitura",  label:"Partitura",        icon:"𝄞", type:"doc"   },
-  { key:"soprano",    label:"Soprano",          icon:"●", type:"audio" },
-  { key:"contralto",  label:"Contralto",        icon:"●", type:"audio" },
-  { key:"alto",       label:"Alto",             icon:"●", type:"audio" },
-  { key:"tenor",      label:"Tenor",            icon:"●", type:"audio" },
-  { key:"baixo",      label:"Baixo",            icon:"●", type:"audio" },
+  { key:"original", label:"Música Original", icon:"♩", type:"audio" },
+  { key:"playback", label:"Playback", icon:"♪", type:"audio" },
+  { key:"partitura", label:"Partitura", icon:"𝄞", type:"doc" },
+  { key:"soprano", label:"Soprano", icon:"●", type:"audio" },
+  { key:"contralto", label:"Contralto", icon:"●", type:"audio" },
+  { key:"alto", label:"Alto", icon:"●", type:"audio" },
+  { key:"tenor", label:"Tenor", icon:"●", type:"audio" },
+  { key:"baixo", label:"Baixo", icon:"●", type:"audio" },
 ];
-const INIT_SONG_CATS_FLAMB = ["MPB","Regionais","Natal"];
-
-const INIT_SONG_CATEGORIES = ["MPB", "Regionais", "Natal"];
 const STUDY_CATEGORIES = [
-  { key: "tecnica", label: "Técnica Vocal", color: "#B41020" },
-  { key: "teoria", label: "Teoria Musical", color: "#1565C0" },
-  { key: "aquecimento", label: "Aquecimento", color: "#E65100" },
-  { key: "videos", label: "Vídeos de Referência", color: "#6A1B9A" },
-  { key: "outros", label: "Outros", color: "#1B5E20" },
+  { key:"tecnica", label:"Técnica Vocal", color:"#B41020" },
+  { key:"teoria", label:"Teoria Musical", color:"#1565C0" },
+  { key:"aquecimento", label:"Aquecimento", color:"#E65100" },
+  { key:"videos", label:"Vídeos de Referência", color:"#6A1B9A" },
+  { key:"outros", label:"Outros", color:"#1B5E20" },
 ];
 const EVENT_STATUS = [
-  { key: "normal", label: "Normal", color: "#1B5E20", icon: "●" },
-  { key: "cancelado", label: "Cancelado", color: "#B41020", icon: "✕" },
-  { key: "feriado", label: "Feriado / Recesso", color: "#E65100", icon: "✦" },
-  { key: "reagendado", label: "Reagendado", color: "#1565C0", icon: "↗" },
-  { key: "suspenso", label: "Suspenso", color: "#7B1FA2", icon: "⏸" },
-  { key: "outros", label: "Outros", color: "#555", icon: "—" },
+  { key:"normal", label:"Normal", color:"#1B5E20", icon:"●" },
+  { key:"cancelado", label:"Cancelado", color:"#B41020", icon:"✕" },
+  { key:"feriado", label:"Feriado / Recesso", color:"#E65100", icon:"✦" },
+  { key:"reagendado", label:"Reagendado", color:"#1565C0", icon:"↗" },
+  { key:"suspenso", label:"Suspenso", color:"#7B1FA2", icon:"⏸" },
 ];
 const RECURRENCE_OPTIONS = [
-  { key: "none", label: "Evento único" },
-  { key: "weekly", label: "Semanal" },
-  { key: "biweekly", label: "Quinzenal" },
-  { key: "monthly", label: "Mensal" },
+  { key:"none", label:"Evento único" },
+  { key:"weekly", label:"Semanal" },
+  { key:"biweekly", label:"Quinzenal" },
+  { key:"monthly", label:"Mensal" },
 ];
 const WEEKDAYS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 const MONTHS_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-const INIT_MEMBERS = [
-  { id: 1, name: "Ana Paula Silva", voice: "soprano", birthday: "1990-03-15", whatsapp: "62999990001", active: true, startDate: "2026-01-01", endDate: "" },
-  { id: 2, name: "Carla Mendes", voice: "contralto", birthday: "1985-07-22", whatsapp: "62999990002", active: true, startDate: "2026-01-01", endDate: "" },
-  { id: 3, name: "Marcos Oliveira", voice: "tenor", birthday: "1992-04-29", whatsapp: "62999990003", active: true, startDate: "2026-01-01", endDate: "" },
-  { id: 4, name: "Roberto Lima", voice: "baixo", birthday: "1988-11-05", whatsapp: "62999990004", active: true, startDate: "2026-01-01", endDate: "" },
-  { id: 5, name: "Fernanda Costa", voice: "alto", birthday: "1995-04-10", whatsapp: "62999990005", active: true, startDate: "2026-01-01", endDate: "" },
-];
-const INIT_EVENTS = [
-  { id: 1, title: "Ensaio", date: "2026-05-07", timeChegada: "18:30", timeApresentacao: "", location: "Shopping Flamboyant — Auditório", vestuario: "", description: "", recurrence: "weekly", recurrenceDay: 4, status: "normal", statusNote: "" },
-  { id: 2, title: "Apresentação Dia das Mães", date: "2026-05-10", timeChegada: "15:00", timeApresentacao: "16:00", location: "Praça Central — Shopping Flamboyant", vestuario: "", description: "", recurrence: "none", status: "normal", statusNote: "" },
-];
-const INIT_NOTICES = [{ id: 1, text: "Bem-vindos ao app do Coral Flamboyant! Aqui você encontra tudo para seus estudos.", date: "2026-04-29", author: "Administração" }];
-const INIT_SONGS = [{ id: 1, title: "Aleluia", composer: "G. F. Handel", curiosidades: "Composta em 1741, faz parte do oratório Messias. Diz a lenda que Handel a teria composto em apenas 24 dias de inspiração intensa.", letra: "", files: { original: "", playback: "", partitura: "", soprano: "", contralto: "", alto: "", tenor: "", baixo: "" } }];
-const INIT_MATERIALS = [];
-
-
-// ── FIREBASE ──────────────────────────────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDgLIpoGCO4Lb5oeiXNwArAQtGmquRSMhA",
-  authDomain: "rifa-onix-barail---abril-26.firebaseapp.com",
-  databaseURL: "https://rifa-onix-barail---abril-26-default-rtdb.firebaseio.com",
-  projectId: "rifa-onix-barail---abril-26",
-  storageBucket: "rifa-onix-barail---abril-26.firebasestorage.app",
-  messagingSenderId: "462942707997",
-  appId: "1:462942707997:web:6f941bda75c75b759fc1f4"
-};
-const DB_PATH = "flamboyant";
-
-// Firebase sync utilities
-let firebaseDB = null;
-let firebaseInitialized = false;
-
-async function initFirebase() {
-  if (firebaseInitialized) return firebaseDB;
-  try {
-    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js');
-    const { getDatabase, ref, set, get, onValue } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js');
-    
-    const apps = getApps();
-    const app = apps.length ? apps[0] : initializeApp(FIREBASE_CONFIG);
-    firebaseDB = getDatabase(app);
-    firebaseInitialized = true;
-    window._fbDB = firebaseDB;
-    window._fbRef = ref;
-    window._fbSet = set;
-    window._fbGet = get;
-    window._fbOnValue = onValue;
-    return firebaseDB;
-  } catch(e) {
-    console.error('Firebase init error:', e);
-    return null;
-  }
-}
-
-async function fbSave(key, data) {
-  try {
-    const db = await initFirebase();
-    if (!db) return;
-    const { ref, set } = { ref: window._fbRef, set: window._fbSet };
-    await set(ref(db, DB_PATH + '/' + key), data);
-  } catch(e) {
-    console.error('Firebase save error:', e);
-  }
-}
-
-async function fbLoad(key, fallback) {
-  try {
-    const db = await initFirebase();
-    if (!db) return fallback;
-    const { ref, get } = { ref: window._fbRef, get: window._fbGet };
-    const snap = await get(ref(db, DB_PATH + '/' + key));
-    if (snap.exists()) return snap.val();
-    return fallback;
-  } catch(e) {
-    console.error('Firebase load error:', e);
-    return fallback;
-  }
-}
-
-function fbWatch(key, callback) {
-  initFirebase().then(db => {
-    if (!db) return;
-    const { ref, onValue } = { ref: window._fbRef, onValue: window._fbOnValue };
-    onValue(ref(db, DB_PATH + '/' + key), snap => {
-      if (snap.exists()) callback(snap.val());
-    });
-  });
-}
-
-// Local storage fallback (used for initial load, Firebase syncs after)
-function gs(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } }
-function ss(k, v) { 
-  try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
-  fbSave(k, v); // also sync to Firebase
-}
-
-// Load from Firebase on startup (overrides localStorage)
-async function loadFromFirebase(setters) {
-  await initFirebase();
-  for (const [key, setter, fallback] of setters) {
-    const data = await fbLoad(key, null);
-    if (data !== null) {
-      setter(data);
-      try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
-    }
-  }
-}
-
-function fmtDate(d) { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${parseInt(dd)} de ${MONTHS_PT[parseInt(m)-1]} de ${y}`; }
-function fmtDateShort(d) { if (!d) return ""; const [, m, dd] = d.split("-"); return `${parseInt(dd)}/${m}`; }
-function fmtBday(d) { if (!d) return ""; const [, m, dd] = d.split("-"); return `${dd}/${m}`; }
-function getBdays(members) { const mo = new Date().getMonth()+1; return members.filter(m => m.active && m.birthday && parseInt(m.birthday.split("-")[1])===mo); }
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-
+// ── ESTILOS ──────────────────────────────────────────────────────────────────
 const LS = { display:"block", fontSize:10, color:C.textoSub, fontWeight:700, marginBottom:5, textTransform:"uppercase", letterSpacing:1.2 };
-const IS = { width:"100%", padding:"10px 12px", borderRadius:6, border:`1px solid ${C.borda}`, fontSize:13, outline:"none", boxSizing:"border-box", background:C.branco, color:C.texto, fontFamily:"inherit" };
-const BTN_RED = { background:C.vermelho, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit" };
-const BTN_GRN = { background:C.verde, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit" };
+const IS = { width:"100%", padding:"10px 12px", borderRadius:6, border:`1px solid ${C.borda}`, fontSize:13, outline:"none", background:C.branco, color:C.texto, fontFamily:"inherit" };
+const BTN = (bg,color="#fff") => ({ background:bg, color, border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit" });
 const BTN_SM = (c) => ({ background:"transparent", color:c, border:`1px solid ${c}`, borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:600 });
 const CARD = { background:C.branco, borderRadius:8, border:`1px solid ${C.borda}`, padding:16, marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
-const FORM = { background:"#FFF8F8", borderRadius:8, border:`1px solid ${C.borda}`, padding:16, marginBottom:16 };
-const EMPTY = { textAlign:"center", color:C.textoLeve, fontSize:13, padding:"32px 0", fontStyle:"italic" };
 
-function Inp({ label, value, onChange, type="text", placeholder }) {
-  return (
-    <div style={{ marginBottom:12 }}>
-      {label && <label style={LS}>{label}</label>}
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={IS} />
-    </div>
-  );
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmtDate(d) { if (!d) return ""; const [y,m,dd] = d.split("-"); return `${parseInt(dd)} de ${MONTHS_PT[parseInt(m)-1]} de ${y}`; }
+function fmtDateShort(d) { if (!d) return ""; const [,m,dd] = d.split("-"); return `${parseInt(dd)}/${m}`; }
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+// ── FIREBASE HOOKS ────────────────────────────────────────────────────────────
+function useCollection(col) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const unsub = db.collection(col).orderBy("createdAt","desc").onSnapshot(snap => {
+      setData(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, [col]);
+  return { data, loading };
 }
 
-function NoticeBar({ notices, members }) {
-  const bdays = getBdays(members);
-  const last = notices.length ? notices[notices.length-1] : null;
-  if (!bdays.length && !last) return null;
-  return (
-    <div style={{ background:C.vermelho, borderRadius:8, padding:"14px 18px", marginBottom:20 }}>
-      {bdays.length > 0 && (
-        <div style={{ marginBottom:last?10:0, paddingBottom:last?10:0, borderBottom:last?"1px solid rgba(255,255,255,0.2)":"none" }}>
-          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>🎂 Aniversariantes de {MONTHS_PT[new Date().getMonth()]}</span>
-          <div style={{ color:"#fff", fontSize:13, marginTop:3, fontWeight:600 }}>{bdays.map(b=>`${b.name.split(" ")[0]} (${fmtBday(b.birthday)})`).join("  ·  ")}</div>
-        </div>
-      )}
-      {last && (
-        <div>
-          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>Aviso — {fmtDateShort(last.date)}</span>
-          <div style={{ color:"#fff", fontSize:13, marginTop:3, lineHeight:1.5 }}>{last.text}</div>
-        </div>
-      )}
-    </div>
-  );
+async function addDoc(col, data) {
+  return db.collection(col).add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+async function updateDoc(col, id, data) {
+  return db.collection(col).doc(id).update({ ...data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+async function deleteDoc(col, id) {
+  return db.collection(col).doc(id).delete();
 }
 
-// ── AGENDA ────────────────────────────────────────────────────
-const EMPTY_FORM = { title:"", date:"", timeChegada:"", timeApresentacao:"", location:"", vestuario:"", description:"", recurrence:"none", recurrenceDay:4, status:"normal", statusNote:"" };
+// ── COMPONENTES BASE ──────────────────────────────────────────────────────────
+function Spinner() {
+  return <div style={{display:"flex",justifyContent:"center",padding:40}}>
+    <div style={{width:32,height:32,border:"3px solid #B41020",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+  </div>;
+}
 
-function AgendaTab({ events, isAdmin, onSave }) {
-  const today = todayStr();
-  const now = new Date();
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
-  const [viewYear, setViewYear] = useState(now.getFullYear());
+function Modal({ title, onClose, children }) {
+  return <div className="modal-overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
+    <div className="modal-box">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:16,color:C.texto}}>{title}</div>
+        <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.textoSub}}>×</button>
+      </div>
+      {children}
+    </div>
+  </div>;
+}
+
+function Badge({ color, children }) {
+  return <span style={{background:color+"22",color,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
+}
+
+function EmptyState({ icon, msg }) {
+  return <div style={{textAlign:"center",padding:40,color:C.textoLeve}}>
+    <div style={{fontSize:32,marginBottom:8}}>{icon}</div>
+    <div style={{fontSize:13}}>{msg}</div>
+  </div>;
+}
+
+// ── LOGIN ──────────────────────────────────────────────────────────────────────
+function Login({ members, onLogin }) {
+  const [mode, setMode] = useState("member"); // "member" | "admin"
+  const [search, setSearch] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState("");
+
+  const filtered = members.filter(m => m.active && m.name.toLowerCase().includes(search.toLowerCase()));
+
+  function selectMember(m) {
+    localStorage.setItem("cf_user", JSON.stringify({ id:m.id, name:m.name, voice:m.voice, isAdmin:false }));
+    onLogin({ id:m.id, name:m.name, voice:m.voice, isAdmin:false });
+  }
+
+  function loginAdmin() {
+    if (pwd === ADMIN_PASSWORD) {
+      const u = { id:"admin", name:"Administrador", isAdmin:true };
+      localStorage.setItem("cf_user", JSON.stringify(u));
+      onLogin(u);
+    } else setErr("Senha incorreta");
+  }
+
+  return <div style={{minHeight:"100vh",background:C.vermelho,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{fontFamily:"'Playfair Display',serif",color:"#fff",fontSize:28,fontWeight:700,marginBottom:4}}>Coral Flamboyant</div>
+    <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginBottom:24,textTransform:"uppercase",letterSpacing:1.5}}>Portal do Corista</div>
+    <div style={{background:"#fff",borderRadius:12,padding:24,width:"100%",maxWidth:360,boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}}>
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        {["member","admin"].map(m => (
+          <button key={m} onClick={() => { setMode(m); setErr(""); }}
+            style={{flex:1,padding:"8px",borderRadius:6,border:`1px solid ${mode===m?C.vermelho:C.borda}`,background:mode===m?C.vermelho:"#fff",color:mode===m?"#fff":C.textoSub,fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
+            {m==="member" ? "Sou Corista" : "Admin"}
+          </button>
+        ))}
+      </div>
+      {mode === "member" ? (<>
+        <input style={IS} placeholder="Buscar seu nome..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus/>
+        <div style={{maxHeight:220,overflowY:"auto",marginTop:8}}>
+          {filtered.length === 0 && <div style={{textAlign:"center",color:C.textoLeve,fontSize:13,padding:20}}>Nenhum membro encontrado</div>}
+          {filtered.map(m => (
+            <button key={m.id} onClick={() => selectMember(m)}
+              style={{width:"100%",textAlign:"left",padding:"10px 12px",border:"none",borderBottom:`1px solid ${C.borda}`,background:"none",cursor:"pointer",fontFamily:"inherit"}}>
+              <div style={{fontWeight:700,fontSize:13,color:C.texto}}>{m.name}</div>
+              <div style={{fontSize:11,color:VOICE_COLORS[m.voice]||C.textoSub}}>{VOICE_LABELS[m.voice]||m.voice}</div>
+            </button>
+          ))}
+        </div>
+      </>) : (<>
+        <input type="password" style={IS} placeholder="Senha do admin" value={pwd} onChange={e=>{setPwd(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&loginAdmin()} autoFocus/>
+        {err && <div style={{color:C.vermelho,fontSize:12,marginTop:6}}>{err}</div>}
+        <button onClick={loginAdmin} style={{...BTN(C.vermelho),marginTop:12}}>Entrar</button>
+      </>)}
+    </div>
+  </div>;
+}
+
+// ── AGENDA ─────────────────────────────────────────────────────────────────────
+function Agenda({ user }) {
+  const { data: events, loading } = useCollection("events");
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(new Date().getFullYear());
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [statusEditId, setStatusEditId] = useState(null);
-  const [statusForm, setStatusForm] = useState({ status:"normal", statusNote:"" });
-  const [deleteModal, setDeleteModal] = useState(null); // {ev}
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ title:"Ensaio", date:todayStr(), timeChegada:"", timeApresentacao:"", location:"", vestuario:"", description:"", status:"normal", statusNote:"", recurrence:"none" });
 
-  function handleDelete(ev) {
-    const isRecurring = ev.recurrence && ev.recurrence !== "none";
-    if (isRecurring) {
-      setDeleteModal(ev);
-    } else {
-      if (window.confirm("Remover este evento?")) {
-        onSave(events.filter(e => String(e.id) !== String(ev.id)));
-      }
-    }
+  const monthEvents = events.filter(e => {
+    if (!e.date) return false;
+    const [y,m] = e.date.split("-");
+    return parseInt(m)-1===month && parseInt(y)===year;
+  }).sort((a,b) => a.date > b.date ? 1 : -1);
+
+  function openEdit(ev) {
+    setEditing(ev.id);
+    setForm({ title:ev.title||"", date:ev.date||"", timeChegada:ev.timeChegada||"", timeApresentacao:ev.timeApresentacao||"", location:ev.location||"", vestuario:ev.vestuario||"", description:ev.description||"", status:ev.status||"normal", statusNote:ev.statusNote||"", recurrence:ev.recurrence||"none" });
+    setShowForm(true);
   }
 
-  function confirmDelete(scope) {
-    const ev = deleteModal;
-    const baseId = String(ev.baseId || ev.id);
-    if (scope === "all") {
-      // Remove o evento base (todas as ocorrências somem)
-      onSave(events.filter(e => String(e.id) !== baseId));
-    } else {
-      // Cancela só esta ocorrência marcando como cancelado nesta data
-      // Adiciona uma exceção: cria evento único cancelado nesta data e ajusta a recorrência
-      const base = events.find(e => String(e.id) === baseId);
-      if (!base) return;
-      // Cria exceção para esta data como evento único cancelado
-      const exception = { ...base, id: Date.now(), date: ev.date, recurrence: "none", baseId: undefined, status: "cancelado", statusNote: "Ocorrência cancelada" };
-      // Mantém o evento recorrente mas marca exceção via lista
-      const exceptions = base.exceptions || [];
-      const updated = events.map(e => String(e.id) === baseId ? { ...e, exceptions: [...exceptions, ev.date] } : e);
-      onSave([...updated, exception]);
-    }
-    setDeleteModal(null);
-  }
-
-  function generateOccurrences(ev, vy, vm) {
-    if (ev.recurrence === "none") return [ev];
-    const result = [];
-    const endDate = new Date(vy, vm + 3, 0);
-    let cur = new Date(ev.date + "T12:00:00");
-    let count = 0;
-    while (cur <= endDate && count < 200) {
-      const dateStr = cur.toISOString().split("T")[0];
-      if (!ev.exceptions || !ev.exceptions.includes(dateStr)) {
-        result.push({ ...ev, date: dateStr, id: String(ev.id) + "_" + count, baseId: ev.id });
-      }
-      if (ev.recurrence === "weekly") cur.setDate(cur.getDate() + 7);
-      else if (ev.recurrence === "biweekly") cur.setDate(cur.getDate() + 14);
-      else cur.setMonth(cur.getMonth() + 1);
-      count++;
-    }
-    return result;
-  }
-
-  const monthStr = String(viewYear) + "-" + String(viewMonth+1).padStart(2,"0");
-  const allOcc = events.flatMap(ev => generateOccurrences(ev, viewYear, viewMonth)).sort((a,b)=>a.date.localeCompare(b.date));
-  const monthEvents = allOcc.filter(e => e.date.startsWith(monthStr));
-  const nextEvents = allOcc.filter(e => e.date >= today).slice(0,3);
-  const nextIds = new Set(nextEvents.map(e => e.id));
-
-  function submit() {
+  async function save() {
     if (!form.title || !form.date) return;
-    if (editId) onSave(events.map(e => e.id===editId ? {...e,...form} : e));
-    else onSave([...events, {...form, id:Date.now()}]);
-    setForm(EMPTY_FORM); setShowForm(false); setEditId(null);
+    if (editing) await updateDoc("events", editing, form);
+    else await addDoc("events", form);
+    setShowForm(false); setEditing(null);
+    setForm({ title:"Ensaio", date:todayStr(), timeChegada:"", timeApresentacao:"", location:"", vestuario:"", description:"", status:"normal", statusNote:"", recurrence:"none" });
   }
 
-  function startEdit(ev) {
-    const idToFind = ev.baseId || ev.id;
-    const base = events.find(e => String(e.id) === String(idToFind));
-    if (!base) return;
-    setForm({ title:base.title, date:base.date, timeChegada:base.timeChegada||"", timeApresentacao:base.timeApresentacao||"", location:base.location||"", vestuario:base.vestuario||"", description:base.description||"", recurrence:base.recurrence||"none", recurrenceDay:base.recurrenceDay??4, status:base.status||"normal", statusNote:base.statusNote||"" });
-    setEditId(base.id); setShowForm(true); window.scrollTo(0,0);
-  }
+  async function del(id) { if (confirm("Excluir evento?")) await deleteDoc("events", id); }
 
-  function saveStatus(ev) {
-    const idToUpdate = ev.baseId || ev.id;
-    onSave(events.map(e => String(e.id) === String(idToUpdate) ? {...e,...statusForm} : e));
-    setStatusEditId(null);
-  }
+  const prevMonth = () => { if (month===0) { setMonth(11); setYear(y=>y-1); } else setMonth(m=>m-1); };
+  const nextMonth = () => { if (month===11) { setMonth(0); setYear(y=>y+1); } else setMonth(m=>m+1); };
 
-  function prevMonth() { if (viewMonth===0) { setViewMonth(11); setViewYear(y=>y-1); } else setViewMonth(m=>m-1); }
-  function nextMonth() { if (viewMonth===11) { setViewMonth(0); setViewYear(y=>y+1); } else setViewMonth(m=>m+1); }
-
-  function EventCard({ ev, highlight }) {
-    const st = EVENT_STATUS.find(s=>s.key===(ev.status||"normal"))||EVENT_STATUS[0];
-    const cancelled = ev.status && ev.status!=="normal";
-    return (
-      <div style={{ ...CARD, borderLeft:`3px solid ${cancelled?st.color:highlight?C.vermelho:C.verde}`, background:highlight?"#FFF8F8":C.branco }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-          <div style={{ flex:1 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:cancelled?C.textoLeve:C.texto, textDecoration:cancelled?"line-through":"none" }}>{ev.title}</span>
-              {ev.recurrence!=="none" && <span style={{ fontSize:9, color:C.verde, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, border:`1px solid ${C.verde}`, borderRadius:3, padding:"1px 5px" }}>Recorrente</span>}
-              {highlight && <span style={{ fontSize:9, color:C.vermelho, fontWeight:700, textTransform:"uppercase", border:`1px solid ${C.vermelho}`, borderRadius:3, padding:"1px 5px" }}>Próximo</span>}
-            </div>
-            <div style={{ fontSize:12, color:cancelled?st.color:C.textoSub, marginTop:3, fontWeight:600 }}>
-              {fmtDate(ev.date)}{cancelled && <span style={{ marginLeft:6 }}>— {st.label}</span>}
-            </div>
-            {!cancelled && <>
-              {ev.timeChegada && <div style={{ fontSize:11, color:C.textoSub, marginTop:2 }}>🕐 Chegada: <strong>{ev.timeChegada}</strong></div>}
-              {ev.timeApresentacao && <div style={{ fontSize:11, color:C.vermelho, marginTop:1 }}>🎶 Apresentação: <strong>{ev.timeApresentacao}</strong></div>}
-              {ev.location && <div style={{ fontSize:11, color:C.textoLeve, marginTop:2 }}>📍 {ev.location}</div>}
-              {ev.vestuario && <div style={{ fontSize:11, color:C.textoLeve, marginTop:1 }}>👔 {ev.vestuario}</div>}
-              {ev.description && <div style={{ fontSize:11, color:C.textoLeve, marginTop:1, fontStyle:"italic" }}>{ev.description}</div>}
-            </>}
-            {ev.statusNote && <div style={{ fontSize:11, color:C.textoSub, marginTop:2, fontStyle:"italic" }}>{ev.statusNote}</div>}
-          </div>
-          {isAdmin && (
-            <div style={{ display:"flex", gap:4, marginLeft:8, flexShrink:0, flexDirection:"column", alignItems:"flex-end" }}>
-              <button onClick={()=>{ setStatusEditId(statusEditId===ev.id?null:ev.id); setStatusForm({ status:ev.status||"normal", statusNote:ev.statusNote||"" }); }} style={BTN_SM(st.color)}>Status</button>
-              <button onClick={()=>startEdit(ev)} style={BTN_SM("#1565C0")}>✏ Editar</button>
-              <button onClick={()=>handleDelete(ev)} style={BTN_SM(C.vermelho)}>✕ Excluir</button>
-            </div>
-          )}
-        </div>
-        {statusEditId===ev.id && (
-          <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.borda}` }}>
-            <div style={LS}>Alterar status</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
-              {EVENT_STATUS.map(s=>(
-                <button key={s.key} onClick={()=>setStatusForm({...statusForm,status:s.key})} style={{ padding:"5px 10px", borderRadius:4, border:`1px solid ${statusForm.status===s.key?s.color:C.borda}`, cursor:"pointer", fontSize:11, fontWeight:700, background:statusForm.status===s.key?s.color:"#fff", color:statusForm.status===s.key?"#fff":C.textoSub, fontFamily:"inherit" }}>
-                  {s.icon} {s.label}
-                </button>
-              ))}
-            </div>
-            {(statusForm.status==="outros"||statusForm.status==="reagendado") && <Inp label="Observação" value={statusForm.statusNote} onChange={v=>setStatusForm({...statusForm,statusNote:v})} placeholder={statusForm.status==="reagendado"?"Nova data/informação...":"Motivo..."} />}
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={()=>saveStatus(ev)} style={{...BTN_RED,padding:"8px 14px",fontSize:12}}>Salvar</button>
-              <button onClick={()=>setStatusEditId(null)} style={{...BTN_RED,background:"#aaa",padding:"8px 14px",fontSize:12}}>Cancelar</button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Modal de exclusão */}
-      {deleteModal && (
-        <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.5)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{ background:"#fff", borderRadius:10, padding:24, maxWidth:320, width:"100%", boxShadow:"0 8px 32px rgba(0,0,0,0.2)" }}>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:C.texto, marginBottom:8 }}>Excluir evento recorrente</div>
-            <div style={{ fontSize:13, color:C.textoSub, marginBottom:20, lineHeight:1.5 }}>
-              <strong>{deleteModal.title}</strong> é um evento recorrente.<br/>O que deseja excluir?
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <button onClick={()=>confirmDelete("this")} style={{ ...BTN_SM(C.vermelho), padding:"10px 14px", fontSize:12, textAlign:"left" }}>
-                ✕ Somente esta ocorrência ({fmtDate(deleteModal.date)})
-              </button>
-              <button onClick={()=>confirmDelete("all")} style={{ ...BTN_SM("#7B1FA2"), padding:"10px 14px", fontSize:12, textAlign:"left" }}>
-                ✕✕ Todas as ocorrências (série completa)
-              </button>
-              <button onClick={()=>setDeleteModal(null)} style={{ ...BTN_SM(C.textoLeve), padding:"10px 14px", fontSize:12, textAlign:"center" }}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {isAdmin && (
-        <button onClick={()=>{ setShowForm(!showForm); setEditId(null); setForm(EMPTY_FORM); }} style={{...BTN_RED, marginBottom:18}}>
-          {showForm?"Cancelar":"+ Novo Evento"}
-        </button>
-      )}
-      {showForm && (
-        <div style={FORM}>
-          <Inp label="Título *" value={form.title} onChange={v=>setForm({...form,title:v})} />
-          <Inp label="Data *" type="date" value={form.date} onChange={v=>setForm({...form,date:v})} />
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <Inp label="Horário de Chegada" type="time" value={form.timeChegada} onChange={v=>setForm({...form,timeChegada:v})} />
-            <Inp label="Horário da Apresentação" type="time" value={form.timeApresentacao} onChange={v=>setForm({...form,timeApresentacao:v})} />
-          </div>
-          <div style={{ marginBottom:12 }}>
-            <label style={LS}>Recorrência</label>
-            <select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} style={IS}>
-              {RECURRENCE_OPTIONS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
-            </select>
-          </div>
-          {form.recurrence!=="none" && (
-            <div style={{ marginBottom:12 }}>
-              <label style={LS}>Dia da semana</label>
-              <div style={{ display:"flex", gap:4 }}>
-                {WEEKDAYS.map((d,i)=><button key={i} onClick={()=>setForm({...form,recurrenceDay:i})} style={{ flex:1, padding:"7px 0", borderRadius:4, border:`1px solid ${form.recurrenceDay===i?C.verde:C.borda}`, cursor:"pointer", fontSize:10, fontWeight:700, background:form.recurrenceDay===i?C.verde:"#fff", color:form.recurrenceDay===i?"#fff":C.textoSub, fontFamily:"inherit" }}>{d}</button>)}
-              </div>
-            </div>
-          )}
-          <Inp label="Local" value={form.location} onChange={v=>setForm({...form,location:v})} />
-          <Inp label="Vestuário" placeholder="Ex: Camisa branca, calça preta..." value={form.vestuario} onChange={v=>setForm({...form,vestuario:v})} />
-          <Inp label="Observações" value={form.description} onChange={v=>setForm({...form,description:v})} />
-          {editId && events.find(e=>e.id===editId)?.recurrence!=="none" && (
-            <div style={{ background:"#FFF3E0", border:"1px solid #FFB74D", borderRadius:6, padding:"10px 12px", marginBottom:12, fontSize:12, color:"#E65100" }}>
-              ℹ️ Evento recorrente — as alterações serão aplicadas a <strong>toda a série</strong>.
-            </div>
-          )}
-          <button onClick={submit} style={BTN_RED}>{editId?"Salvar Alterações":"Adicionar Evento"}</button>
-        </div>
-      )}
-
-      {/* Navegação mensal */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-        <button onClick={prevMonth} style={{ background:"none", border:`1px solid ${C.borda}`, borderRadius:4, padding:"5px 10px", cursor:"pointer", fontSize:13, color:C.textoSub }}>‹</button>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:C.texto, textTransform:"capitalize" }}>
-          {MONTHS_PT[viewMonth]} {viewYear}
-        </div>
-        <button onClick={nextMonth} style={{ background:"none", border:`1px solid ${C.borda}`, borderRadius:4, padding:"5px 10px", cursor:"pointer", fontSize:13, color:C.textoSub }}>›</button>
-      </div>
-
-      {monthEvents.length===0 && <div style={EMPTY}>Nenhum evento em {MONTHS_PT[viewMonth]}.</div>}
-      {monthEvents.map(ev=><EventCard key={ev.id} ev={ev} highlight={nextIds.has(ev.id)} />)}
+  return <div style={{padding:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Agenda</div>
+      {user.isAdmin && <button onClick={()=>{setEditing(null);setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Evento</button>}
     </div>
-  );
-}
-
-
-// ── RICH TEXT EDITOR ─────────────────────────────────────────
-function RichTextEditor({ value, onChange, readonly }) {
-  const ref = React.useRef(null);
-  const [showToolbar, setShowToolbar] = React.useState(false);
-
-  React.useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) {
-      ref.current.innerHTML = value || "";
-    }
-  }, []);
-
-  function exec(cmd, val) {
-    ref.current.focus();
-    document.execCommand(cmd, false, val);
-    onChange(ref.current.innerHTML);
-  }
-
-  if (readonly) {
-    return (
-      <div style={{ fontSize:14, lineHeight:1.8, color:"#1A1A1A" }}
-        dangerouslySetInnerHTML={{ __html: value || "<em style='color:#aaa'>Letra não cadastrada.</em>" }} />
-    );
-  }
-
-  return (
-    <div style={{ border:"1px solid #E8E0E0", borderRadius:8, overflow:"hidden" }}>
-      <div style={{ background:"#f5f5f5", padding:"6px 8px", display:"flex", gap:4, flexWrap:"wrap", borderBottom:"1px solid #E8E0E0" }}>
-        {[
-          { cmd:"bold", label:"<b>N</b>", title:"Negrito" },
-          { cmd:"italic", label:"<i>I</i>", title:"Itálico" },
-          { cmd:"underline", label:"<u>S</u>", title:"Sublinhado" },
-        ].map(t => (
-          <button key={t.cmd} onMouseDown={e=>{ e.preventDefault(); exec(t.cmd); }}
-            title={t.title}
-            style={{ background:"#fff", border:"1px solid #ddd", borderRadius:4, padding:"3px 8px", cursor:"pointer", fontSize:13, minWidth:28 }}
-            dangerouslySetInnerHTML={{ __html: t.label }} />
-        ))}
-        <select onMouseDown={e=>e.stopPropagation()} onChange={e=>exec("fontSize", e.target.value)} style={{ fontSize:11, border:"1px solid #ddd", borderRadius:4, padding:"2px 4px", background:"#fff" }}>
-          <option value="">Tamanho</option>
-          {[1,2,3,4,5].map(s=><option key={s} value={s}>{["Muito pequeno","Pequeno","Normal","Grande","Muito grande"][s-1]}</option>)}
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+      <button onClick={prevMonth} style={{background:"none",border:`1px solid ${C.borda}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",fontSize:14}}>‹</button>
+      <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:15,color:C.texto}}>{MONTHS_PT[month]} {year}</div>
+      <button onClick={nextMonth} style={{background:"none",border:`1px solid ${C.borda}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",fontSize:14}}>›</button>
+    </div>
+    {loading ? <Spinner/> : monthEvents.length===0 ? <EmptyState icon="📅" msg="Nenhum evento neste mês"/> : monthEvents.map(ev => {
+      const st = EVENT_STATUS.find(s=>s.key===ev.status)||EVENT_STATUS[0];
+      return <div key={ev.id} style={CARD} className="fade-in">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <span style={{color:st.color,fontSize:12}}>{st.icon}</span>
+              <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{ev.title}</div>
+            </div>
+            <div style={{fontSize:12,color:C.textoSub,marginBottom:4}}>{fmtDate(ev.date)}</div>
+            {ev.timeChegada && <div style={{fontSize:12,color:C.textoSub}}>🕐 Chegada: {ev.timeChegada}{ev.timeApresentacao&&` · Apresentação: ${ev.timeApresentacao}`}</div>}
+            {ev.location && <div style={{fontSize:12,color:C.textoSub,marginTop:2}}>📍 {ev.location}</div>}
+            {ev.vestuario && <div style={{fontSize:12,color:C.textoSub,marginTop:2}}>👗 {ev.vestuario}</div>}
+            {ev.description && <div style={{fontSize:12,color:C.textoSub,marginTop:4,fontStyle:"italic"}}>{ev.description}</div>}
+          </div>
+          {user.isAdmin && <div style={{display:"flex",gap:6,marginLeft:8}}>
+            <button onClick={()=>openEdit(ev)} style={BTN_SM(C.textoSub)}>✎</button>
+            <button onClick={()=>del(ev.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          </div>}
+        </div>
+      </div>;
+    })}
+    {showForm && <Modal title={editing?"Editar Evento":"Novo Evento"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      {[["Título","title","text"],["Data","date","date"],["Horário de chegada","timeChegada","time"],["Horário de apresentação","timeApresentacao","time"],["Local","location","text"],["Vestuário","vestuario","text"]].map(([l,k,t]) => (
+        <div key={k} style={{marginBottom:12}}>
+          <label style={LS}>{l}</label>
+          <input style={IS} type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
+        </div>
+      ))}
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Status</label>
+        <select style={IS} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+          {EVENT_STATUS.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
-        {[
-          { cmd:"justifyLeft", label:"⬅", title:"Alinhar esquerda" },
-          { cmd:"justifyCenter", label:"≡", title:"Centralizar" },
-          { cmd:"justifyRight", label:"➡", title:"Alinhar direita" },
-        ].map(t => (
-          <button key={t.cmd} onMouseDown={e=>{ e.preventDefault(); exec(t.cmd); }}
-            title={t.title}
-            style={{ background:"#fff", border:"1px solid #ddd", borderRadius:4, padding:"3px 8px", cursor:"pointer", fontSize:13 }}>
-            {t.label}
-          </button>
-        ))}
-        <input type="color" title="Cor do texto" onMouseDown={e=>e.stopPropagation()}
-          onChange={e=>exec("foreColor", e.target.value)}
-          style={{ width:28, height:26, border:"1px solid #ddd", borderRadius:4, cursor:"pointer", padding:1 }} />
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning
-        onInput={()=>onChange(ref.current.innerHTML)}
-        style={{ minHeight:120, padding:"12px 14px", fontSize:14, lineHeight:1.8, outline:"none", color:"#1A1A1A" }}
-        data-placeholder="Digite a letra aqui..." />
-    </div>
-  );
-}
-
-// ── KITS ─────────────────────────────────────────────────────
-
-function FilePlayer({ url, label, icon, type }) {
-  if (!url || !url.trim()) return null;
-  if (type === "doc") return (
-    <a href={url} target="_blank" rel="noreferrer" style={{ display:"flex", alignItems:"center", gap:8, background:"#f9f9f9", border:"1px solid #E8E0E0", borderRadius:6, padding:"10px 12px", color:"#666", textDecoration:"none", fontSize:12, fontWeight:700, marginBottom:8 }}>
-      <span style={{ fontSize:16 }}>{icon}</span>
-      <span>{label}</span>
-      <span style={{ marginLeft:"auto", fontSize:10, color:"#999", background:"#fff", border:"1px solid #E8E0E0", borderRadius:4, padding:"2px 6px" }}>Abrir ↗</span>
-    </a>
-  );
-  let src = url;
-  const dm = url && url.match(/\/d\/([^/]+)/);
-  if (dm) src = "https://drive.google.com/uc?export=download&id=" + dm[1];
-  return (
-    <div style={{ marginBottom:10 }}>
-      <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, marginBottom:4, color:"#666" }}>{icon} {label}</div>
-      <audio controls style={{ width:"100%", height:34 }} src={src} />
-    </div>
-  );
-}
-
-function RichTextEditor({ value, onChange, readonly, accentColor }) {
-  const ref = React.useRef(null);
-  const color = accentColor || "#B41020";
-  React.useEffect(() => { if (ref.current && ref.current.innerHTML !== (value||"")) ref.current.innerHTML = value || ""; }, []);
-  function exec(cmd, val) { ref.current.focus(); document.execCommand(cmd, false, val||undefined); onChange(ref.current.innerHTML); }
-  if (readonly) return (
-    <div style={{ fontSize:14, lineHeight:1.9, color:"#1A1A1A" }}
-      dangerouslySetInnerHTML={{ __html: value || "<em style='color:#bbb'>Letra não cadastrada ainda.</em>" }} />
-  );
-  return (
-    <div style={{ border:"1px solid #E8E0E0", borderRadius:8, overflow:"hidden" }}>
-      <div style={{ background:"#f5f5f5", padding:"6px 8px", display:"flex", gap:4, flexWrap:"wrap", borderBottom:"1px solid #E8E0E0" }}>
-        {[{cmd:"bold",label:"<b>N</b>"},{cmd:"italic",label:"<i>I</i>"},{cmd:"underline",label:"<u>S</u>"}].map(t=>(
-          <button key={t.cmd} onMouseDown={e=>{e.preventDefault();exec(t.cmd);}} style={{ background:"#fff", border:"1px solid #ddd", borderRadius:4, padding:"3px 8px", cursor:"pointer", fontSize:13, minWidth:28 }} dangerouslySetInnerHTML={{__html:t.label}}/>
-        ))}
-        <select onMouseDown={e=>e.stopPropagation()} onChange={e=>exec("fontSize",e.target.value)} style={{ fontSize:11, border:"1px solid #ddd", borderRadius:4, padding:"2px 4px", background:"#fff" }}>
-          <option value="">Tamanho</option>
-          {[1,2,3,4,5].map(s=><option key={s} value={s}>{["Muito pequeno","Pequeno","Normal","Grande","Muito grande"][s-1]}</option>)}
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Recorrência</label>
+        <select style={IS} value={form.recurrence} onChange={e=>setForm(f=>({...f,recurrence:e.target.value}))}>
+          {RECURRENCE_OPTIONS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
         </select>
-        {[{cmd:"justifyLeft",label:"⬅"},{cmd:"justifyCenter",label:"≡"},{cmd:"justifyRight",label:"➡"}].map(t=>(
-          <button key={t.cmd} onMouseDown={e=>{e.preventDefault();exec(t.cmd);}} style={{ background:"#fff", border:"1px solid #ddd", borderRadius:4, padding:"3px 8px", cursor:"pointer", fontSize:13 }}>{t.label}</button>
-        ))}
-        <input type="color" onMouseDown={e=>e.stopPropagation()} onChange={e=>exec("foreColor",e.target.value)} style={{ width:28, height:26, border:"1px solid #ddd", borderRadius:4, cursor:"pointer", padding:1 }}/>
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning onInput={()=>onChange(ref.current.innerHTML)}
-        style={{ minHeight:120, padding:"12px 14px", fontSize:14, lineHeight:1.8, outline:"none", color:"#1A1A1A" }}/>
-    </div>
-  );
+      <div style={{marginBottom:16}}>
+        <label style={LS}>Observações</label>
+        <textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
+        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      </div>
+    </Modal>}
+  </div>;
 }
 
-function SongCard({ song, isAdmin, onUpdate, onDelete, songCats, accentColor, compact }) {
-  const RED = accentColor || "#B41020";
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ title:song.title, composer:song.composer||"", category:song.category||"", curiosidades:song.curiosidades||"", letra:song.letra||"", files:{...song.files} });
-  const hasFiles = Object.values(song.files).some(v=>v&&v.trim());
-
-  if (compact) return (
-    <div style={{ background:"#fff", borderRadius:8, border:"1px solid #E8E0E0", padding:"10px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-      <div>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:700, color:"#1A1A1A" }}>{song.title}</div>
-        {song.composer && <div style={{ fontSize:11, color:"#666", fontStyle:"italic" }}>{song.composer}</div>}
-      </div>
-      <div style={{ fontSize:10, color:hasFiles?"#1B5E20":"#ccc", fontWeight:700 }}>{hasFiles?"● Tem áudio":"○"}</div>
-    </div>
-  );
-
-  return (
-    <div style={{ background:"#fff", borderRadius:8, border:"1px solid #E8E0E0", marginBottom:10, overflow:"hidden", boxShadow:open?"0 2px 12px rgba(0,0,0,0.06)":"none" }}>
-      <div onClick={()=>!editing&&setOpen(!open)} style={{ padding:"14px 16px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", background:open?"#fafafa":"#fff" }}>
-        <div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#1A1A1A" }}>{song.title}</div>
-          {song.composer && <div style={{ fontSize:11, color:"#666", marginTop:2, fontStyle:"italic" }}>{song.composer}</div>}
-          <div style={{ fontSize:10, color:hasFiles?"#1B5E20":"#ccc", marginTop:4, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>{hasFiles?"● Arquivos disponíveis":"○ Sem arquivos"}</div>
-        </div>
-        <div style={{ display:"flex", gap:5, alignItems:"center" }}>
-          {isAdmin && <>
-            <button onClick={e=>{e.stopPropagation();setEditing(!editing);setOpen(true);}} style={{ background:"transparent", color:"#1565C0", border:"1px solid #1565C0", borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer" }}>✏</button>
-            <button onClick={e=>{e.stopPropagation();if(window.confirm("Remover música?"))onDelete(song.id);}} style={{ background:"transparent", color:RED, border:"1px solid "+RED, borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer" }}>✕</button>
-          </>}
-          <span style={{ fontSize:12, color:"#999", marginLeft:4 }}>{open?"▲":"▼"}</span>
-        </div>
-      </div>
-      {open && (
-        <div style={{ padding:"0 16px 16px", borderTop:"1px solid #E8E0E0" }}>
-          {editing ? (
-            <div style={{ paddingTop:14 }}>
-              <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Título</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/></div>
-              <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Compositor</label><input value={form.composer} onChange={e=>setForm({...form,composer:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/></div>
-              <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Categoria</label>
-                <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box", background:"#fff" }}>
-                  {(songCats||[]).map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div style={{ marginBottom:12 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Letra da música</label><RichTextEditor value={form.letra||""} onChange={v=>setForm({...form,letra:v})} readonly={false} accentColor={RED}/></div>
-              <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Curiosidades</label><textarea value={form.curiosidades} onChange={e=>setForm({...form,curiosidades:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box", height:72, resize:"vertical" }}/></div>
-              <div style={{ borderTop:"1px solid #E8E0E0", paddingTop:12, marginBottom:8 }}/>
-              <div style={{ fontSize:10, color:"#666", fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Links (Google Drive, YouTube, etc.)</div>
-              {FILE_FIELDS.map(f=>(
-                <div key={f.key} style={{ marginBottom:10 }}>
-                  <label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>{f.label} {f.type==="doc"?"(PDF/Doc)":"(Áudio)"}</label>
-                  <input value={form.files[f.key]||""} onChange={e=>setForm({...form,files:{...form.files,[f.key]:e.target.value}})} placeholder="Cole o link aqui" style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/>
-                </div>
-              ))}
-              <div style={{ display:"flex", gap:8 }}>
-                <button onClick={()=>{onUpdate({...song,...form});setEditing(false);}} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", flex:1 }}>Salvar</button>
-                <button onClick={()=>setEditing(false)} style={{ background:"#999", color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", flex:1 }}>Cancelar</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ paddingTop:14 }}>
-              <div style={{ marginBottom:16, background:"#fafafa", borderRadius:10, padding:"14px 16px", border:"1px solid #E8E0E0" }}>
-                <div style={{ fontSize:10, color:RED, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>🎵 Letra</div>
-                <RichTextEditor value={song.letra||""} onChange={()=>{}} readonly={true} accentColor={RED}/>
-              </div>
-              {song.curiosidades && (
-                <div style={{ borderLeft:"3px solid #1B5E20", paddingLeft:12, marginBottom:16 }}>
-                  <div style={{ fontSize:10, color:"#1B5E20", fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:5 }}>Sobre esta música</div>
-                  <div style={{ fontSize:13, color:"#1A1A1A", lineHeight:1.6, fontStyle:"italic" }}>{song.curiosidades}</div>
-                </div>
-              )}
-              {!hasFiles && <div style={{ textAlign:"center", color:"#ccc", fontSize:13, padding:"24px 0", fontStyle:"italic" }}>Nenhum arquivo disponível ainda.</div>}
-              {FILE_FIELDS.map(f => { const url=song.files[f.key]; if(!url||!url.trim()) return null; return <FilePlayer key={f.key} url={url} label={f.label} icon={f.icon} type={f.type}/>; })}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function KitsTab({ songs, isAdmin, onSave, songCats, onSaveCats, accentColor }) {
-  const RED = accentColor || "#B41020";
-  const cats = songCats || [];
+// ── REPERTÓRIO ─────────────────────────────────────────────────────────────────
+function Repertorio({ user }) {
+  const { data: songs, loading } = useCollection("songs");
+  const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", composer:"", category:cats[0]||"" });
-  const [filterCat, setFilterCat] = useState("todos");
-  const [filterLetter, setFilterLetter] = useState("todos");
-  const [showCatMgr, setShowCatMgr] = useState(false);
-  const [newCat, setNewCat] = useState("");
+  const [form, setForm] = useState({ title:"", composer:"", categoria:"MPB", curiosidades:"", letra:"", files:{} });
+  const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState("");
 
-  function addSong() {
-    if (!form.title) return;
-    const files = {}; FILE_FIELDS.forEach(f=>files[f.key]="");
-    onSave([...songs,{id:Date.now(),...form,curiosidades:"",letra:"",files}]);
-    setForm({title:"",composer:"",category:cats[0]||""}); setShowForm(false);
+  const filtered = songs.filter(s => s.title&&s.title.toLowerCase().includes(search.toLowerCase()));
+
+  function openEdit(s) {
+    setEditing(s.id);
+    setForm({ title:s.title||"", composer:s.composer||"", categoria:s.categoria||"MPB", curiosidades:s.curiosidades||"", letra:s.letra||"", files:s.files||{} });
+    setShowForm(true);
   }
 
-  const allLetters = [...new Set(songs.map(s=>s.title[0]?.toUpperCase()).filter(Boolean))].sort();
-  let filtered = [...songs];
-  if (filterCat!=="todos") filtered=filtered.filter(s=>s.category===filterCat);
-  if (filterLetter!=="todos") filtered=filtered.filter(s=>s.title[0]?.toUpperCase()===filterLetter);
-  filtered.sort((a,b)=>a.title.localeCompare(b.title,"pt-BR"));
+  async function save() {
+    if (!form.title) return;
+    if (editing) await updateDoc("songs", editing, form);
+    else await addDoc("songs", form);
+    setShowForm(false); setEditing(null);
+  }
 
-  const grouped = filterCat==="todos"
-    ? cats.reduce((acc,cat)=>{ const s=filtered.filter(x=>x.category===cat); if(s.length) acc[cat]=s; return acc; },{})
-    : {[filterCat]:filtered};
-  const uncat = filtered.filter(s=>!cats.includes(s.category));
-  if(uncat.length) grouped["Sem categoria"]=uncat;
+  async function del(id) { if (confirm("Excluir música?")) { await deleteDoc("songs", id); if (selected?.id===id) setSelected(null); } }
 
-  return (
-    <div>
-      {isAdmin && (
-        <div style={{ display:"flex", gap:8, marginBottom:18 }}>
-          <button onClick={()=>setShowForm(!showForm)} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", flex:1, fontFamily:"inherit" }}>{showForm?"Cancelar":"+ Nova Música"}</button>
-          <button onClick={()=>setShowCatMgr(!showCatMgr)} title="Gerenciar categorias" style={{ background:"#666", color:"#fff", border:"none", borderRadius:6, padding:"11px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>⚙️</button>
-        </div>
-      )}
+  if (selected) {
+    const s = songs.find(x=>x.id===selected.id) || selected;
+    return <div style={{padding:16}}>
+      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",color:C.vermelho,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16}}>← Voltar</button>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto,marginBottom:4}}>{s.title}</div>
+      {s.composer && <div style={{fontSize:13,color:C.textoSub,marginBottom:16}}>Compositor: {s.composer}</div>}
+      {s.curiosidades && <div style={{...CARD,background:"#FFF8F8"}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.vermelho,marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Curiosidades</div>
+        <div style={{fontSize:13,color:C.texto,lineHeight:1.6}}>{s.curiosidades}</div>
+      </div>}
+      <div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8}}>Arquivos de ensaio</div>
+      {FILE_FIELDS.map(f => {
+        const url = s.files?.[f.key];
+        return <div key={f.key} style={{...CARD,padding:12}}>
+          <div style={{fontSize:11,color:C.textoSub,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>{f.icon} {f.label}</div>
+          {url ? (f.type==="audio" ? <audio controls src={url} style={{width:"100%"}}/> : <a href={url} target="_blank" style={{color:C.vermelho,fontSize:13}}>Abrir arquivo</a>) : <div style={{fontSize:12,color:C.textoLeve}}>Não disponível</div>}
+        </div>;
+      })}
+      {s.letra && <><div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8,marginTop:8}}>Letra</div>
+      <div style={{...CARD,whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.8,color:C.texto}}>{s.letra}</div></>}
+    </div>;
+  }
 
-      {showCatMgr && isAdmin && (
-        <div style={{ background:"#f9f9f9", border:"1px solid #E8E0E0", borderRadius:8, padding:16, marginBottom:16 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:"#666", textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Gerenciar Categorias</div>
-          {cats.map(cat=>(
-            <div key={cat} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid #E8E0E0" }}>
-              <span style={{ fontSize:13, fontWeight:600 }}>{cat}</span>
-              <button onClick={()=>{ if(songs.some(s=>s.category===cat)){alert("Remova as músicas desta categoria primeiro!");return;} onSaveCats(cats.filter(c=>c!==cat)); }} style={{ background:"transparent", color:RED, border:"1px solid "+RED, borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer" }}>✕</button>
-            </div>
-          ))}
-          <div style={{ display:"flex", gap:8, marginTop:10 }}>
-            <input value={newCat} onChange={e=>setNewCat(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(onSaveCats([...cats,newCat.trim()]),setNewCat(""))} placeholder="Nova categoria..." style={{ flex:1, padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none" }}/>
-            <button onClick={()=>{ if(!newCat.trim()||cats.includes(newCat.trim()))return; onSaveCats([...cats,newCat.trim()]); setNewCat(""); }} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"10px 16px", cursor:"pointer", fontSize:13, fontWeight:700 }}>+</button>
+  return <div style={{padding:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Repertório</div>
+      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({title:"",composer:"",categoria:"MPB",curiosidades:"",letra:"",files:{}});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Música</button>}
+    </div>
+    <input style={{...IS,marginBottom:16}} placeholder="Buscar música..." value={search} onChange={e=>setSearch(e.target.value)}/>
+    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="🎵" msg="Nenhuma música cadastrada"/> : filtered.map(s => (
+      <div key={s.id} style={{...CARD,cursor:"pointer"}} onClick={()=>setSelected(s)} className="fade-in">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{s.title}</div>
+            {s.composer && <div style={{fontSize:12,color:C.textoSub}}>{s.composer}</div>}
+            {s.categoria && <Badge color={C.vermelho}>{s.categoria}</Badge>}
           </div>
+          {user.isAdmin && <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:6}}>
+            <button onClick={()=>openEdit(s)} style={BTN_SM(C.textoSub)}>✎</button>
+            <button onClick={()=>del(s.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          </div>}
         </div>
-      )}
-
-      {showForm && (
-        <div style={{ background:"#f9f9f9", border:"1px solid #E8E0E0", borderRadius:8, padding:16, marginBottom:16 }}>
-          <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Título *</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/></div>
-          <div style={{ marginBottom:10 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Compositor</label><input value={form.composer} onChange={e=>setForm({...form,composer:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/></div>
-          <div style={{ marginBottom:12 }}><label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Categoria</label>
-            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box", background:"#fff" }}>
-              {cats.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <button onClick={addSong} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit" }}>Adicionar Música</button>
-        </div>
-      )}
-
-      <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:8 }}>
-        {["todos",...cats].map(c=>(
-          <button key={c} onClick={()=>setFilterCat(c)} style={{ flexShrink:0, padding:"5px 12px", borderRadius:4, border:"1px solid "+(filterCat===c?RED:"#E8E0E0"), cursor:"pointer", fontSize:11, fontWeight:700, background:filterCat===c?RED:"#fff", color:filterCat===c?"#fff":"#666", fontFamily:"inherit" }}>
-            {c==="todos"?"Todas":c}
-          </button>
-        ))}
       </div>
-
-      {allLetters.length > 5 && (
-        <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:12 }}>
-          <button onClick={()=>setFilterLetter("todos")} style={{ padding:"3px 8px", borderRadius:4, border:"1px solid "+(filterLetter==="todos"?RED:"#E8E0E0"), cursor:"pointer", fontSize:11, fontWeight:700, background:filterLetter==="todos"?RED:"#fff", color:filterLetter==="todos"?"#fff":"#666", fontFamily:"inherit" }}>Todas</button>
-          {allLetters.map(l=>(
-            <button key={l} onClick={()=>setFilterLetter(l)} style={{ padding:"3px 8px", borderRadius:4, border:"1px solid "+(filterLetter===l?RED:"#E8E0E0"), cursor:"pointer", fontSize:11, fontWeight:700, background:filterLetter===l?RED:"#fff", color:filterLetter===l?"#fff":"#666", fontFamily:"inherit" }}>{l}</button>
-          ))}
+    ))}
+    {showForm && <Modal title={editing?"Editar Música":"Nova Música"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      {[["Título","title"],["Compositor","composer"],["Categoria","categoria"]].map(([l,k]) => (
+        <div key={k} style={{marginBottom:12}}>
+          <label style={LS}>{l}</label>
+          <input style={IS} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
         </div>
-      )}
+      ))}
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Curiosidades</label>
+        <textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.curiosidades} onChange={e=>setForm(f=>({...f,curiosidades:e.target.value}))}/>
+      </div>
+      <div style={{marginBottom:8,fontWeight:700,fontSize:12,color:C.texto}}>URLs dos arquivos</div>
+      {FILE_FIELDS.map(f => (
+        <div key={f.key} style={{marginBottom:8}}>
+          <label style={LS}>{f.icon} {f.label}</label>
+          <input style={IS} placeholder="URL do arquivo..." value={form.files?.[f.key]||""} onChange={e=>setForm(ff=>({...ff,files:{...ff.files,[f.key]:e.target.value}}))}/>
+        </div>
+      ))}
+      <div style={{marginBottom:16}}>
+        <label style={LS}>Letra</label>
+        <textarea style={{...IS,minHeight:120,resize:"vertical"}} value={form.letra} onChange={e=>setForm(f=>({...f,letra:e.target.value}))}/>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
+        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      </div>
+    </Modal>}
+  </div>;
+}
 
-      {songs.length===0 && <div style={{ textAlign:"center", color:"#ccc", fontSize:13, padding:"32px 0", fontStyle:"italic" }}>Nenhuma música no repertório ainda.</div>}
+// ── SALA DE ESTUDOS ────────────────────────────────────────────────────────────
+function SalaEstudos({ user }) {
+  const { data: materials, loading } = useCollection("materials");
+  const [cat, setCat] = useState("todos");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title:"", category:"tecnica", url:"", description:"" });
+  const [editing, setEditing] = useState(null);
 
-      {Object.entries(grouped).map(([cat,catSongs])=>(
-        <div key={cat}>
-          <div style={{ fontSize:11, fontWeight:700, color:RED, textTransform:"uppercase", letterSpacing:1.5, margin:"16px 0 8px", paddingBottom:6, borderBottom:"2px solid "+RED }}>
-            {cat} <span style={{ color:"#999", fontWeight:400 }}>({catSongs.length})</span>
+  const filtered = cat==="todos" ? materials : materials.filter(m=>m.category===cat);
+
+  async function save() {
+    if (!form.title) return;
+    if (editing) await updateDoc("materials", editing, form);
+    else await addDoc("materials", form);
+    setShowForm(false); setEditing(null);
+  }
+
+  async function del(id) { if (confirm("Excluir material?")) await deleteDoc("materials", id); }
+
+  return <div style={{padding:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Sala de Estudos</div>
+      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({title:"",category:"tecnica",url:"",description:""});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Material</button>}
+    </div>
+    <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:16,paddingBottom:4}}>
+      {[{key:"todos",label:"Todos",color:C.textoSub},...STUDY_CATEGORIES].map(c=>(
+        <button key={c.key} onClick={()=>setCat(c.key)}
+          style={{flexShrink:0,padding:"6px 12px",borderRadius:20,border:`1px solid ${cat===c.key?c.color:C.borda}`,background:cat===c.key?c.color+"22":"#fff",color:cat===c.key?c.color:C.textoSub,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}}>
+          {c.label}
+        </button>
+      ))}
+    </div>
+    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="📚" msg="Nenhum material nesta categoria"/> : filtered.map(m => {
+      const cat_info = STUDY_CATEGORIES.find(c=>c.key===m.category);
+      const isYT = m.url&&(m.url.includes("youtube.com")||m.url.includes("youtu.be"));
+      const ytId = isYT ? (m.url.includes("v=") ? m.url.split("v=")[1].split("&")[0] : m.url.split("/").pop()) : null;
+      return <div key={m.id} style={CARD} className="fade-in">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div>
+            {cat_info && <Badge color={cat_info.color}>{cat_info.label}</Badge>}
+            <div style={{fontWeight:700,fontSize:14,color:C.texto,marginTop:4}}>{m.title}</div>
+            {m.description && <div style={{fontSize:12,color:C.textoSub,marginTop:4}}>{m.description}</div>}
           </div>
-          {catSongs.map(s=><SongCard key={s.id} song={s} isAdmin={isAdmin} songCats={cats} accentColor={RED}
-            onUpdate={u=>onSave(songs.map(x=>x.id===s.id?u:x))}
-            onDelete={id=>onSave(songs.filter(x=>x.id!==id))}/>)}
+          {user.isAdmin && <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>{setEditing(m.id);setForm({title:m.title||"",category:m.category||"tecnica",url:m.url||"",description:m.description||""});setShowForm(true);}} style={BTN_SM(C.textoSub)}>✎</button>
+            <button onClick={()=>del(m.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          </div>}
+        </div>
+        {isYT && ytId ? <div style={{position:"relative",paddingBottom:"56.25%",height:0,overflow:"hidden",borderRadius:8}}>
+          <iframe src={`https://www.youtube.com/embed/${ytId}`} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none",borderRadius:8}} allowFullScreen/>
+        </div> : m.url ? <a href={m.url} target="_blank" style={{color:C.vermelho,fontSize:13,fontWeight:700}}>→ Abrir material</a> : null}
+      </div>;
+    })}
+    {showForm && <Modal title={editing?"Editar Material":"Novo Material"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{marginBottom:12}}><label style={LS}>Título</label><input style={IS} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Categoria</label>
+        <select style={IS} value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+          {STUDY_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+        </select>
+      </div>
+      <div style={{marginBottom:12}}><label style={LS}>URL (YouTube, Drive, etc)</label><input style={IS} placeholder="https://..." value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}/></div>
+      <div style={{marginBottom:16}}><label style={LS}>Descrição</label><textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/></div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
+        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      </div>
+    </Modal>}
+  </div>;
+}
+
+// ── AVISOS ─────────────────────────────────────────────────────────────────────
+function Avisos({ user }) {
+  const { data: avisos, loading } = useCollection("avisos");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ text:"", priority:"normal" });
+  const [editing, setEditing] = useState(null);
+
+  async function save() {
+    if (!form.text) return;
+    if (editing) await updateDoc("avisos", editing, form);
+    else await addDoc("avisos", form);
+    setShowForm(false); setEditing(null);
+  }
+
+  async function del(id) { if (confirm("Excluir aviso?")) await deleteDoc("avisos", id); }
+
+  const priorityColors = { urgente:"#B41020", importante:"#E65100", normal:"#1B5E20" };
+
+  return <div style={{padding:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Avisos</div>
+      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({text:"",priority:"normal"});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Aviso</button>}
+    </div>
+    {loading ? <Spinner/> : avisos.length===0 ? <EmptyState icon="📢" msg="Nenhum aviso no momento"/> : avisos.map(a => (
+      <div key={a.id} style={{...CARD,borderLeft:`4px solid ${priorityColors[a.priority]||C.verde}`}} className="fade-in">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{flex:1}}>
+            <Badge color={priorityColors[a.priority]||C.verde}>{a.priority||"normal"}</Badge>
+            <div style={{fontSize:14,color:C.texto,marginTop:8,lineHeight:1.6}}>{a.text}</div>
+          </div>
+          {user.isAdmin && <div style={{display:"flex",gap:6,marginLeft:8}}>
+            <button onClick={()=>{setEditing(a.id);setForm({text:a.text||"",priority:a.priority||"normal"});setShowForm(true);}} style={BTN_SM(C.textoSub)}>✎</button>
+            <button onClick={()=>del(a.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          </div>}
+        </div>
+      </div>
+    ))}
+    {showForm && <Modal title={editing?"Editar Aviso":"Novo Aviso"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Prioridade</label>
+        <select style={IS} value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>
+          <option value="normal">Normal</option>
+          <option value="importante">Importante</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </div>
+      <div style={{marginBottom:16}}><label style={LS}>Mensagem</label><textarea style={{...IS,minHeight:120,resize:"vertical"}} value={form.text} onChange={e=>setForm(f=>({...f,text:e.target.value}))}/></div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
+        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      </div>
+    </Modal>}
+  </div>;
+}
+
+// ── INTEGRANTES ────────────────────────────────────────────────────────────────
+function Integrantes({ user }) {
+  const { data: members, loading } = useCollection("members");
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [filter, setFilter] = useState("todos");
+  const [form, setForm] = useState({ name:"", voice:"soprano", birthday:"", whatsapp:"", active:true, startDate:todayStr(), endDate:"", notes:"" });
+
+  const filtered = members.filter(m => filter==="todos" ? true : filter==="ativos" ? m.active : !m.active);
+
+  function openEdit(m) {
+    setEditing(m.id);
+    setForm({ name:m.name||"", voice:m.voice||"soprano", birthday:m.birthday||"", whatsapp:m.whatsapp||"", active:m.active!==false, startDate:m.startDate||todayStr(), endDate:m.endDate||"", notes:m.notes||"" });
+    setShowForm(true);
+  }
+
+  async function save() {
+    if (!form.name) return;
+    if (editing) await updateDoc("members", editing, form);
+    else await addDoc("members", form);
+    setShowForm(false); setEditing(null);
+  }
+
+  async function del(id) { if (confirm("Excluir integrante?")) await deleteDoc("members", id); }
+
+  return <div style={{padding:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Integrantes</div>
+      <button onClick={()=>{setEditing(null);setForm({name:"",voice:"soprano",birthday:"",whatsapp:"",active:true,startDate:todayStr(),endDate:"",notes:""});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Integrante</button>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      {["todos","ativos","inativos"].map(f=>(
+        <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${filter===f?C.vermelho:C.borda}`,background:filter===f?C.vermelho+"22":"#fff",color:filter===f?C.vermelho:C.textoSub,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}>
+          {f}
+        </button>
+      ))}
+    </div>
+    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="👥" msg="Nenhum integrante encontrado"/> : filtered.map(m => (
+      <div key={m.id} style={CARD} className="fade-in">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{m.name}</div>
+            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+              <Badge color={VOICE_COLORS[m.voice]||C.textoSub}>{VOICE_LABELS[m.voice]||m.voice}</Badge>
+              <Badge color={m.active?C.verde:C.textoSub}>{m.active?"Ativo":"Inativo"}</Badge>
+            </div>
+            {m.birthday && <div style={{fontSize:12,color:C.textoSub,marginTop:4}}>🎂 {fmtDate(m.birthday)}</div>}
+            {m.whatsapp && <div style={{fontSize:12,color:C.textoSub}}>📱 {m.whatsapp}</div>}
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>openEdit(m)} style={BTN_SM(C.textoSub)}>✎</button>
+            <button onClick={()=>del(m.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          </div>
+        </div>
+      </div>
+    ))}
+    {showForm && <Modal title={editing?"Editar Integrante":"Novo Integrante"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{marginBottom:12}}><label style={LS}>Nome completo</label><input style={IS} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Naipe</label>
+        <select style={IS} value={form.voice} onChange={e=>setForm(f=>({...f,voice:e.target.value}))}>
+          {Object.entries(VOICE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+        </select>
+      </div>
+      <div style={{marginBottom:12}}><label style={LS}>Data de nascimento</label><input type="date" style={IS} value={form.birthday} onChange={e=>setForm(f=>({...f,birthday:e.target.value}))}/></div>
+      <div style={{marginBottom:12}}><label style={LS}>WhatsApp</label><input style={IS} value={form.whatsapp} onChange={e=>setForm(f=>({...f,whatsapp:e.target.value}))}/></div>
+      <div style={{marginBottom:12}}><label style={LS}>Data de ingresso</label><input type="date" style={IS} value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}/></div>
+      <div style={{marginBottom:12}}>
+        <label style={LS}>Status</label>
+        <select style={IS} value={form.active?"ativo":"inativo"} onChange={e=>setForm(f=>({...f,active:e.target.value==="ativo"}))}>
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+      <div style={{marginBottom:16}}><label style={LS}>Observações</label><textarea style={{...IS,minHeight:60,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
+        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      </div>
+    </Modal>}
+  </div>;
+}
+
+// ── PAINEL ADMIN ────────────────────────────────────────────────────────────────
+function Painel({ user }) {
+  const { data: members } = useCollection("members");
+  const { data: events } = useCollection("events");
+  const { data: songs } = useCollection("songs");
+  const { data: avisos } = useCollection("avisos");
+
+  const today = todayStr();
+  const ativos = members.filter(m=>m.active);
+  const proxEventos = events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1).slice(0,3);
+  const currentMonth = new Date().getMonth()+1;
+  const aniversarios = members.filter(m=>m.active&&m.birthday&&parseInt(m.birthday.split("-")[1])===currentMonth);
+
+  return <div style={{padding:16}}>
+    <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.texto,marginBottom:20}}>Painel</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+      {[["👥","Integrantes",ativos.length,"ativos"],["🎵","Músicas",songs.length,"no repertório"],["📅","Eventos",events.length,"cadastrados"],["🎂","Aniversários",aniversarios.length,"este mês"]].map(([icon,label,val,sub])=>(
+        <div key={label} style={{...CARD,textAlign:"center",padding:16}}>
+          <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
+          <div style={{fontSize:24,fontWeight:700,color:C.vermelho}}>{val}</div>
+          <div style={{fontSize:11,color:C.textoSub,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8}}>{sub}</div>
         </div>
       ))}
     </div>
-  );
-}
-// ── ESTUDOS ───────────────────────────────────────────────────
-function EstudosTab({ materials, isAdmin, onSave }) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", url:"", category:"tecnica", description:"" });
-  const [editId, setEditId] = useState(null);
-  const [filterCat, setFilterCat] = useState("todos");
-
-  function submit() {
-    if (!form.title||!form.url) return;
-    if (editId) onSave(materials.map(m=>m.id===editId?{...m,...form}:m));
-    else onSave([...materials,{...form,id:Date.now()}]);
-    setForm({title:"",url:"",category:"tecnica",description:""}); setShowForm(false); setEditId(null);
-  }
-
-  const filtered = filterCat==="todos" ? materials : materials.filter(m=>m.category===filterCat);
-
-  return (
-    <div>
-      {isAdmin && <button onClick={()=>{ setShowForm(!showForm); setEditId(null); setForm({title:"",url:"",category:"tecnica",description:""}); }} style={{...BTN_RED,marginBottom:18}}>{showForm?"Cancelar":"+ Novo Material"}</button>}
-      {showForm && (
-        <div style={FORM}>
-          <Inp label="Título *" value={form.title} onChange={v=>setForm({...form,title:v})} />
-          <Inp label="Link *" value={form.url} onChange={v=>setForm({...form,url:v})} placeholder="https://youtube.com/..." />
-          <div style={{ marginBottom:12 }}>
-            <label style={LS}>Categoria</label>
-            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={IS}>
-              {STUDY_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
-          </div>
-          <Inp label="Descrição" value={form.description} onChange={v=>setForm({...form,description:v})} />
-          <button onClick={submit} style={BTN_RED}>{editId?"Salvar":"Adicionar"}</button>
-        </div>
-      )}
-      <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:16 }}>
-        {[{key:"todos",label:"Todos",color:C.texto},...STUDY_CATEGORIES].map(c=>(
-          <button key={c.key} onClick={()=>setFilterCat(c.key)} style={{ flexShrink:0, padding:"5px 12px", borderRadius:4, border:`1px solid ${filterCat===c.key?c.color:C.borda}`, cursor:"pointer", fontSize:11, fontWeight:700, background:filterCat===c.key?c.color:"#fff", color:filterCat===c.key?"#fff":C.textoSub, fontFamily:"inherit" }}>{c.label}</button>
-        ))}
+    {aniversarios.length>0 && <div style={{...CARD,background:"#FFF8F8",marginBottom:16}}>
+      <div style={{fontSize:12,fontWeight:700,color:C.vermelho,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>🎂 Aniversariantes do mês</div>
+      {aniversarios.map(m=><div key={m.id} style={{fontSize:13,color:C.texto,marginBottom:4}}>{m.name} — {m.birthday?.split("-").slice(1).reverse().join("/")}</div>)}
+    </div>}
+    <div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8}}>Próximos eventos</div>
+    {proxEventos.length===0 ? <EmptyState icon="📅" msg="Nenhum evento próximo"/> : proxEventos.map(e=>(
+      <div key={e.id} style={{...CARD,padding:12}}>
+        <div style={{fontWeight:700,fontSize:13,color:C.texto}}>{e.title}</div>
+        <div style={{fontSize:12,color:C.textoSub}}>{fmtDate(e.date)}{e.timeChegada&&` · ${e.timeChegada}`}</div>
       </div>
-      {filtered.length===0 && <div style={EMPTY}>Nenhum material disponível.</div>}
-      {filtered.map(mat=>{
-        const cat = STUDY_CATEGORIES.find(c=>c.key===mat.category)||STUDY_CATEGORIES[4];
-        const isYT = mat.url.includes("youtube")||mat.url.includes("youtu.be");
-        return (
-          <div key={mat.id} style={{...CARD, borderLeft:`3px solid ${cat.color}`}}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:9, color:cat.color, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:5 }}>{cat.label}</div>
-                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:C.texto }}>{mat.title}</div>
-                {mat.description && <div style={{ fontSize:12, color:C.textoSub, marginTop:4, fontStyle:"italic" }}>{mat.description}</div>}
-              </div>
-              {isAdmin && <div style={{ display:"flex", gap:4, marginLeft:8 }}><button onClick={()=>{ setForm({title:mat.title,url:mat.url,category:mat.category,description:mat.description||""}); setEditId(mat.id); setShowForm(true); }} style={BTN_SM("#1565C0")}>✏</button><button onClick={()=>{ if(window.confirm("Remover?")) onSave(materials.filter(x=>x.id!==mat.id)); }} style={BTN_SM(C.vermelho)}>✕</button></div>}
-            </div>
-            <a href={mat.url} target="_blank" rel="noreferrer" style={{ display:"inline-block", marginTop:10, background:isYT?"#CC0000":C.vermelho, color:"#fff", textDecoration:"none", borderRadius:4, padding:"6px 14px", fontSize:11, fontWeight:700 }}>
-              {isYT?"▶ Assistir no YouTube":"↗ Acessar Material"}
-            </a>
-          </div>
-        );
-      })}
-    </div>
-  );
+    ))}
+    {avisos.length>0 && <><div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8,marginTop:8}}>Avisos recentes</div>
+    {avisos.slice(0,2).map(a=>(
+      <div key={a.id} style={{...CARD,padding:12,borderLeft:`3px solid #B41020`}}>
+        <div style={{fontSize:13,color:C.texto}}>{a.text}</div>
+      </div>
+    ))}</>}
+  </div>;
 }
 
-// ── PDF GENERATOR ─────────────────────────────────────────────
-function generatePDF(htmlContent, filename) {
-  const full = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${filename}</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:Arial,sans-serif; color:#1A1A1A; background:#fff; }
-    @media print { .no-print { display:none !important; } body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-  </style></head><body>
-  <div class="no-print" style="background:#1B5E20;color:#fff;padding:14px 20px;text-align:center;font-family:Arial;font-size:14px;position:sticky;top:0;z-index:99;">
-    📄 Para salvar como PDF: toque em <strong>Compartilhar</strong> ou use <strong>Ctrl+P → Salvar como PDF</strong>
-    <button onclick="window.print()" style="margin-left:12px;background:#fff;color:#1B5E20;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-weight:700;font-size:14px;">🖨️ Imprimir / PDF</button>
-  </div>
-  ${htmlContent}</body></html>`;
-  const blob = new Blob([full], {type:"text/html;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank");
-  if (!win) {
-    // fallback: download
-    const a = document.createElement("a");
-    a.href = url; a.download = filename + ".html";
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-  }
-  setTimeout(()=>URL.revokeObjectURL(url), 5000);
-}
-
-
-// QR Code generator using Google Charts API
-function generateQRCode(text) {
-  const encoded = encodeURIComponent(text);
-  return `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encoded}&choe=UTF-8`;
-}
-
-// Save declaration to Firebase and return ID
-async function saveDeclaracao(data) {
-  const id = Date.now().toString(36) + Math.random().toString(36).substr(2,5);
-  try {
-    await fbSave("declaracoes/" + id, { ...data, id, emitidaEm: new Date().toISOString().split("T")[0] });
-  } catch(e) { console.error(e); }
-  return id;
-}
-
-// ── RELATÓRIO PDF ─────────────────────────────────────────────
-function RelatorioTab({ members, events, songs, materials, pauloSig, luciaSig }) {
-  const today = todayStr();
-  const now = new Date();
-  const [periodo, setPeriodo] = useState("mensal");
-  const [mesInicio, setMesInicio] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
-  const [mesFim, setMesFim] = useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
-  const [textoIntro, setTextoIntro] = useState("");
-  const [linkVideo, setLinkVideo] = useState("");
-  const [linkFotos, setLinkFotos] = useState("");
-
-  const active = members.filter(m=>m.active);
-
-  function getEventsInPeriod() {
-    const start = mesInicio + "-01";
-    const endDate = new Date(mesFim.split("-")[0], parseInt(mesFim.split("-")[1]), 0);
-    const end = endDate.toISOString().split("T")[0];
-    return events.filter(e => e.date >= start && e.date <= end && (e.status||"normal")==="normal");
-  }
-
-  const eventosRealizados = getEventsInPeriod();
-  const ensaios = eventosRealizados.filter(e=>e.title.toLowerCase().includes("ensaio")||e.recurrence!=="none");
-  const apresentacoes = eventosRealizados.filter(e=>!e.title.toLowerCase().includes("ensaio")&&e.recurrence==="none");
-
-  function periodoLabel() {
-    if (mesInicio===mesFim) {
-      const [y,m] = mesInicio.split("-");
-      return `${MONTHS_PT[parseInt(m)-1]} de ${y}`;
-    }
-    const [y1,m1] = mesInicio.split("-");
-    const [y2,m2] = mesFim.split("-");
-    return `${MONTHS_PT[parseInt(m1)-1]} de ${y1} a ${MONTHS_PT[parseInt(m2)-1]} de ${y2}`;
-  }
-
-  function gerarRelatorio() {
-    const html = `
-    <div style="max-width:750px;margin:0 auto;padding:0;">
-      <!-- Cabeçalho timbrado -->
-      <div style="background:#B41020;padding:28px 40px 20px;color:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;letter-spacing:1px;">Coral Flamboyant</div>
-            <div style="font-size:11px;margin-top:6px;opacity:0.8;text-transform:uppercase;letter-spacing:2px;">Shopping Flamboyant · Goiânia, GO</div>
-          </div>
-          <div style="text-align:right;font-size:11px;opacity:0.8;">
-            <div>Maestro: Paulo Sergio Motta</div>
-            <div style="margin-top:3px;">Produtora: Lucia Kratz</div>
-          </div>
-        </div>
-        <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.3);padding-top:12px;display:flex;gap:20px;font-size:11px;opacity:0.85;">
-          <span>Relatório de Atividades</span>
-          <span>·</span>
-          <span style="text-transform:capitalize;">${periodoLabel()}</span>
-          <span>·</span>
-          <span>Emitido em: ${fmtDate(today)}</span>
-        </div>
-      </div>
-      <!-- Faixa verde -->
-      <div style="background:#1B5E20;height:6px;"></div>
-      <!-- Corpo -->
-      <div style="padding:32px 40px;">
-        ${textoIntro ? `
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#B41020;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;border-bottom:2px solid #B41020;padding-bottom:6px;display:inline-block;">Apresentação</div>
-          <p style="font-size:13px;line-height:1.8;color:#333;margin-top:10px;">${textoIntro}</p>
-        </div>` : ""}
-        <!-- Resumo -->
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#B41020;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;border-bottom:2px solid #B41020;padding-bottom:6px;display:inline-block;">Resumo do Período</div>
-          <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-            <tr style="background:#f9f9f9;">
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;font-weight:700;">Coristas Ativos</td>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;text-align:center;">${active.length}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;font-weight:700;">Ensaios Realizados</td>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;text-align:center;">${ensaios.length}</td>
-            </tr>
-            <tr style="background:#f9f9f9;">
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;font-weight:700;">Apresentações Realizadas</td>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;text-align:center;">${apresentacoes.length}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;font-weight:700;">Músicas no Repertório</td>
-              <td style="padding:10px 14px;font-size:13px;border:1px solid #eee;text-align:center;">${songs.length}</td>
-            </tr>
-          </table>
-        </div>
-        <!-- Eventos -->
-        ${eventosRealizados.length>0 ? `
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#B41020;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;border-bottom:2px solid #B41020;padding-bottom:6px;display:inline-block;">Atividades Realizadas</div>
-          <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-            <tr style="background:#B41020;color:#fff;">
-              <th style="padding:8px 12px;font-size:11px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Data</th>
-              <th style="padding:8px 12px;font-size:11px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Atividade</th>
-              <th style="padding:8px 12px;font-size:11px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Local</th>
-            </tr>
-            ${eventosRealizados.map((e,i)=>`
-            <tr style="background:${i%2===0?"#f9f9f9":"#fff"};">
-              <td style="padding:8px 12px;font-size:12px;border:1px solid #eee;">${fmtDate(e.date)}</td>
-              <td style="padding:8px 12px;font-size:12px;border:1px solid #eee;font-weight:600;">${e.title}</td>
-              <td style="padding:8px 12px;font-size:12px;border:1px solid #eee;color:#666;">${e.location||"—"}</td>
-            </tr>`).join("")}
-          </table>
-        </div>` : ""}
-        <!-- Links -->
-        ${(linkVideo||linkFotos) ? `
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#B41020;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;border-bottom:2px solid #B41020;padding-bottom:6px;display:inline-block;">Registros</div>
-          ${linkVideo?`<p style="font-size:12px;margin-top:10px;"><strong>Vídeo da Apresentação:</strong> <span style="color:#1565C0;">${linkVideo}</span></p>`:""}
-          ${linkFotos?`<p style="font-size:12px;margin-top:6px;"><strong>Álbum de Fotos:</strong> <span style="color:#1565C0;">${linkFotos}</span></p>`:""}
-        </div>` : ""}
-        <!-- Assinaturas -->
-        <div style="margin-top:48px;display:flex;justify-content:space-around;gap:40px;">
-          <div style="text-align:center;flex:1;">
-            ${pauloSig?`<img src="${pauloSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
-            <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Paulo Sergio Motta</div>
-            <div style="font-size:10px;color:#666;">Maestro</div>
-          </div>
-          <div style="text-align:center;flex:1;">
-            ${luciaSig?`<img src="${luciaSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:60px;border-bottom:1px solid #333;'></div>"}
-            <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Lucia Kratz</div>
-            <div style="font-size:10px;color:#666;">Produtora</div>
-          </div>
-        </div>
-        <!-- Rodapé -->
-        <div style="margin-top:40px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">
-          Coral Flamboyant · Shopping Flamboyant · Goiânia, GO · Documento gerado em ${fmtDate(today)}
-        </div>
-      </div>
-    </div>`;
-    generatePDF(html, `Relatorio_Coral_Flamboyant_${mesInicio}`);
-  }
-
-  const byVoice = Object.keys(VOICE_LABELS).map(v=>({ voice:v, count:active.filter(m=>m.voice===v).length }));
-  const maxVoice = Math.max(...byVoice.map(v=>v.count),1);
-
-  return (
-    <div>
-      <div style={{ background:C.vermelho, borderRadius:8, padding:"18px 20px", marginBottom:20, color:"#fff", textAlign:"center" }}>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700 }}>Coral Flamboyant</div>
-        <div style={{ fontSize:10, marginTop:4, opacity:0.8, textTransform:"uppercase", letterSpacing:2 }}>Relatório de Atividades</div>
-      </div>
-
-      <div style={FORM}>
-        <div style={{ fontSize:11, fontWeight:700, color:C.textoSub, textTransform:"uppercase", letterSpacing:1, marginBottom:14 }}>Configurar Relatório</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <div style={{ marginBottom:12 }}>
-            <label style={LS}>Mês / Ano início</label>
-            <input type="month" value={mesInicio} onChange={e=>setMesInicio(e.target.value)} style={IS} />
-          </div>
-          <div style={{ marginBottom:12 }}>
-            <label style={LS}>Mês / Ano fim</label>
-            <input type="month" value={mesFim} onChange={e=>setMesFim(e.target.value)} style={IS} />
-          </div>
-        </div>
-        <div style={{ marginBottom:12 }}>
-          <label style={LS}>Texto de Apresentação</label>
-          <textarea value={textoIntro} onChange={e=>setTextoIntro(e.target.value)} placeholder="Descreva as atividades do período..." style={{...IS, height:80, resize:"vertical"}} />
-        </div>
-        <Inp label="Link do Vídeo da Apresentação" value={linkVideo} onChange={setLinkVideo} placeholder="https://youtube.com/..." />
-        <Inp label="Link do Álbum de Fotos" value={linkFotos} onChange={setLinkFotos} placeholder="https://drive.google.com/..." />
-        <button onClick={gerarRelatorio} style={BTN_RED}>⬇ Gerar Relatório PDF</button>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-        {[
-          { label:"Coristas Ativos", value:active.length, color:C.verde },
-          { label:"Repertório", value:songs.length, color:C.vermelho },
-          { label:"Eventos no período", value:eventosRealizados.length, color:"#1565C0" },
-          { label:"Ensaios no período", value:ensaios.length, color:"#E65100" },
-        ].map((c,i)=>(
-          <div key={i} style={{ background:C.branco, borderRadius:8, border:`1px solid ${C.borda}`, padding:"14px", textAlign:"center" }}>
-            <div style={{ fontSize:30, fontWeight:700, color:c.color, fontFamily:"'Playfair Display',serif" }}>{c.value}</div>
-            <div style={{ fontSize:10, color:C.textoSub, marginTop:3, textTransform:"uppercase", letterSpacing:0.8 }}>{c.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{...CARD}}>
-        <div style={{ fontSize:11, fontWeight:700, color:C.textoSub, textTransform:"uppercase", letterSpacing:1, marginBottom:14 }}>Coristas por Naipe</div>
-        {byVoice.map(v=>(
-          <div key={v.voice} style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3 }}>
-              <span style={{ fontWeight:700, color:VOICE_COLORS[v.voice] }}>{VOICE_LABELS[v.voice]}</span>
-              <span style={{ color:C.textoLeve }}>{v.count}</span>
-            </div>
-            <div style={{ background:C.fundo, borderRadius:2, height:5 }}>
-              <div style={{ width:`${v.count>0?(v.count/maxVoice)*100:0}%`, background:VOICE_COLORS[v.voice], height:"100%", borderRadius:2 }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── DECLARAÇÃO ────────────────────────────────────────────────
-function DeclaracaoTab({ member, events, pauloSig, luciaSig }) {
-  const today = todayStr();
-  const startDate = member.startDate || today;
-  const endDate = member.endDate || today;
-
-  function getPresencas() {
-    const start = startDate;
-    const end = endDate;
-    return events.filter(e => e.date >= start && e.date <= end && (e.status||"normal")==="normal" && e.recurrence==="none");
-  }
-
-  const apresentacoes = getPresencas();
-
-  function gerarDeclaracao() {
-    const [sy,sm,sd] = startDate.split("-");
-    const [ey,em,ed] = endDate.split("-");
-    const periodoTexto = startDate===endDate
-      ? fmtDate(startDate)
-      : `${parseInt(sd)} de ${MONTHS_PT[parseInt(sm)-1]} de ${sy} a ${parseInt(ed)} de ${MONTHS_PT[parseInt(em)-1]} de ${ey}`;
-
-    const html = `
-    <div style="max-width:700px;margin:0 auto;padding:0;">
-      <div style="background:#B41020;padding:24px 40px 18px;color:#fff;">
-        <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;letter-spacing:1px;">Coral Flamboyant</div>
-        <div style="font-size:10px;margin-top:4px;opacity:0.8;text-transform:uppercase;letter-spacing:2px;">Shopping Flamboyant · Goiânia, GO</div>
-      </div>
-      <div style="background:#1B5E20;height:5px;"></div>
-      <div style="padding:40px 40px 32px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#1A1A1A;text-transform:uppercase;letter-spacing:2px;">Declaração de Participação</div>
-          <div style="width:60px;height:2px;background:#B41020;margin:10px auto;"></div>
-        </div>
-        <p style="font-size:13px;line-height:2;color:#333;text-align:justify;">
-          Declaramos para os devidos fins que <strong>${member.name}</strong>, participante do Coral Flamboyant na categoria <strong>${VOICE_LABELS[member.voice]}</strong>, integrou ativamente as atividades corais no período de <strong>${periodoTexto}</strong>, realizadas no Shopping Flamboyant, localizado na Av. Deputado Jamel Cecílio, 3300, Jardim Goiás, Goiânia — GO.
-        </p>
-        <p style="font-size:13px;line-height:2;color:#333;text-align:justify;margin-top:14px;">
-          Durante o período mencionado, o(a) participante tomou parte nos ensaios semanais e demais atividades promovidas pelo grupo, contribuindo para o desenvolvimento artístico e cultural do Coral Flamboyant.
-        </p>
-        ${apresentacoes.length>0?`
-        <div style="margin-top:24px;">
-          <div style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#B41020;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;border-bottom:1px solid #B41020;padding-bottom:5px;display:inline-block;">Apresentações no Período</div>
-          <ul style="margin-top:10px;padding-left:20px;">
-            ${apresentacoes.map(e=>`<li style="font-size:12px;color:#333;margin-bottom:4px;">${fmtDate(e.date)} — ${e.title}${e.location?" · "+e.location:""}</li>`).join("")}
-          </ul>
-        </div>`:""}
-        <p style="font-size:13px;line-height:2;color:#333;margin-top:24px;">
-          Goiânia, ${fmtDate(today)}.
-        </p>
-        <div style="margin-top:48px;display:flex;justify-content:space-around;gap:40px;">
-          <div style="text-align:center;flex:1;">
-            ${pauloSig?`<img src="${pauloSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
-            <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Paulo Sergio Motta</div>
-            <div style="font-size:10px;color:#666;">Maestro — Coral Flamboyant</div>
-          </div>
-          <div style="text-align:center;flex:1;">
-            ${luciaSig?`<img src="${luciaSig}" style="height:75px;object-fit:contain;display:block;margin:0 auto 4px;" />`:"<div style='height:55px;border-bottom:1px solid #333;'></div>"}
-            <div style="font-size:11px;font-weight:700;color:#1A1A1A;margin-top:4px;">Lucia Kratz</div>
-            <div style="font-size:10px;color:#666;">Produtora — Coral Flamboyant</div>
-          </div>
-        </div>
-        <div style="margin-top:36px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">
-          Coral Flamboyant · Shopping Flamboyant · Goiânia, GO · Documento gerado em ${fmtDate(today)}
-        </div>
-      </div>
-    </div>`;
-    // Save to Firebase and generate QR
-    const declData = {
-      coral: "flamboyant",
-      nome: member.name,
-      funcao: VOICE_LABELS[member.voice] || "Corista",
-      startDate: startDate,
-      endDate: member.endDate || "",
-      apresentacoes: apresentacoes.map(e => `${fmtDate(e.date)} — ${e.title}`)
-    };
-    saveDeclaracao(declData).then(id => {
-      const verifyURL = `https://luciakratz-arch.github.io/coral-flamboyant/verificar.html?id=${id}`;
-      const qrURL = generateQRCode(verifyURL);
-      const htmlComQR = html.replace(
-        `<div style="margin-top:40px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">`,
-        `<div style="text-align:center;margin-top:24px;padding:16px;background:#fff5f5;border-radius:8px;border:1px solid #f0d0d0;">
-          <div style="font-size:11px;color:#B41020;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Verificação Online</div>
-          <img src="${qrURL}" style="width:100px;height:100px;display:block;margin:0 auto 8px;" alt="QR Code"/>
-          <div style="font-size:9px;color:#999;word-break:break-all;">${verifyURL}</div>
-          <div style="font-size:11px;color:#666;margin-top:6px;">📞 (62) 9 9148-9893 — Paulo Sergio Motta</div>
-        </div>
-        <div style="margin-top:40px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa;">`
-      );
-      generatePDF(htmlComQR, `Declaracao_${member.name.replace(/ /g,"_")}`);
-    });
-  }
-
-  return (
-    <div>
-      <div style={{ background:C.verde, borderRadius:8, padding:"16px 18px", marginBottom:20, color:"#fff" }}>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700 }}>{member.name}</div>
-        <div style={{ fontSize:11, marginTop:3, opacity:0.85, textTransform:"uppercase", letterSpacing:0.8 }}>{VOICE_LABELS[member.voice]} · Declaração de Participação</div>
-      </div>
-      <div style={CARD}>
-        <div style={{ fontSize:12, color:C.textoSub, marginBottom:6 }}>Período de participação:</div>
-        <div style={{ fontSize:14, fontWeight:700, color:C.texto }}>
-          {fmtDate(startDate)} {member.endDate ? `a ${fmtDate(member.endDate)}` : "até o momento"}
-        </div>
-        {apresentacoes.length>0 && (
-          <div style={{ marginTop:12 }}>
-            <div style={{ fontSize:11, color:C.textoSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Apresentações no período ({apresentacoes.length})</div>
-            {apresentacoes.map(e=>(
-              <div key={e.id} style={{ fontSize:12, color:C.texto, padding:"4px 0", borderBottom:`1px solid ${C.borda}` }}>
-                {fmtDateShort(e.date)} — {e.title}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <button onClick={gerarDeclaracao} style={{...BTN_GRN}}>⬇ Baixar Declaração em PDF</button>
-    </div>
-  );
-}
-
-// ── CADASTRO ─────────────────────────────────────────────────
-function CadastroTab({ members, onSave, notices, onSaveNotices }) {
-  const [section, setSection] = useState("members");
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ name:"", voice:"soprano", birthday:"", whatsapp:"", active:true, startDate:todayStr(), endDate:"" });
-  const [noticeText, setNoticeText] = useState("");
-  const active = members.filter(m=>m.active);
-  const inactive = members.filter(m=>!m.active);
-
-  function submitMember() {
-    if (!form.name) return;
-    if (editId) onSave(members.map(m=>m.id===editId?{...m,...form}:m));
-    else onSave([...members,{...form,id:Date.now()}]);
-    setForm({name:"",voice:"soprano",birthday:"",whatsapp:"",active:true,startDate:todayStr(),endDate:""});
-    setShowForm(false); setEditId(null);
-  }
-
-  function deactivate(m) {
-    const endDate = todayStr();
-    onSave(members.map(x=>x.id===m.id?{...x,active:false,endDate}:x));
-  }
-
-  function MemberRow({ m }) {
-    return (
-      <div style={{...CARD, opacity:m.active?1:0.65}}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-          <div style={{ flex:1 }}>
-            <div style={{ fontWeight:700, fontSize:14, color:C.texto }}>{m.name}</div>
-            <div style={{ display:"flex", gap:7, marginTop:5, flexWrap:"wrap", alignItems:"center" }}>
-              <span style={{ fontSize:10, color:VOICE_COLORS[m.voice], fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, border:`1px solid ${VOICE_COLORS[m.voice]}`, borderRadius:3, padding:"1px 6px" }}>{VOICE_LABELS[m.voice]}</span>
-              {m.birthday && <span style={{ fontSize:11, color:C.textoLeve }}>🎂 {fmtBday(m.birthday)}</span>}
-              {m.whatsapp && <span style={{ fontSize:11, color:C.textoLeve }}>📱 {m.whatsapp}</span>}
-            </div>
-            <div style={{ fontSize:10, color:C.textoLeve, marginTop:4 }}>
-              Desde: {fmtDate(m.startDate||"")}
-              {m.endDate && ` · Saída: ${fmtDate(m.endDate)}`}
-            </div>
-          </div>
-          <div style={{ display:"flex", gap:4, flexDirection:"column", alignItems:"flex-end" }}>
-            <button onClick={()=>{ setForm({name:m.name,voice:m.voice,birthday:m.birthday||"",whatsapp:m.whatsapp||"",active:m.active,startDate:m.startDate||"",endDate:m.endDate||""}); setEditId(m.id); setShowForm(true); }} style={BTN_SM("#1565C0")}>✏ Editar</button>
-            {m.active
-              ? <button onClick={()=>deactivate(m)} style={BTN_SM(C.verde)}>Desativar</button>
-              : <button onClick={()=>onSave(members.map(x=>x.id===m.id?{...x,active:true,endDate:""}:x))} style={BTN_SM(C.verde)}>Reativar</button>
-            }
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div style={{ display:"flex", gap:0, marginBottom:20, border:`1px solid ${C.borda}`, borderRadius:6, overflow:"hidden" }}>
-        {["members","notices"].map(s=>(
-          <button key={s} onClick={()=>setSection(s)} style={{ flex:1, padding:"10px", border:"none", cursor:"pointer", fontFamily:"inherit", background:section===s?C.vermelho:C.branco, color:section===s?"#fff":C.textoSub, fontWeight:700, fontSize:11, textTransform:"uppercase", letterSpacing:0.8 }}>
-            {s==="members"?`Coristas (${active.length} ativos)`:"Avisos"}
-          </button>
-        ))}
-      </div>
-
-      {section==="members" && (
-        <>
-          <button onClick={()=>{ setShowForm(!showForm); setEditId(null); setForm({name:"",voice:"soprano",birthday:"",whatsapp:"",active:true,startDate:todayStr(),endDate:""}); }} style={{...BTN_RED,marginBottom:16}}>
-            {showForm?"Cancelar":"+ Novo Corista"}
-          </button>
-          {showForm && (
-            <div style={FORM}>
-              <Inp label="Nome completo *" value={form.name} onChange={v=>setForm({...form,name:v})} />
-              <div style={{ marginBottom:12 }}>
-                <label style={LS}>Naipe / Voz</label>
-                <select value={form.voice} onChange={e=>setForm({...form,voice:e.target.value})} style={IS}>
-                  {Object.entries(VOICE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <Inp label="Data de aniversário" type="date" value={form.birthday} onChange={v=>setForm({...form,birthday:v})} />
-              <Inp label="WhatsApp" placeholder="62999990000" value={form.whatsapp} onChange={v=>setForm({...form,whatsapp:v})} />
-              <Inp label="Data de início no coral" type="date" value={form.startDate} onChange={v=>setForm({...form,startDate:v})} />
-              <button onClick={submitMember} style={BTN_RED}>{editId?"Salvar Alterações":"Cadastrar Corista"}</button>
-            </div>
-          )}
-          {active.length>0 && <>
-            <div style={{ fontSize:10, color:C.textoLeve, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>Ativos ({active.length})</div>
-            {active.map(m=><MemberRow key={m.id} m={m} />)}
-          </>}
-          {inactive.length>0 && <>
-            <div style={{ fontSize:10, color:C.textoLeve, textTransform:"uppercase", letterSpacing:1.5, margin:"16px 0 10px" }}>Histórico — Inativos ({inactive.length})</div>
-            {inactive.map(m=><MemberRow key={m.id} m={m} />)}
-          </>}
-        </>
-      )}
-
-      {section==="notices" && (
-        <>
-          <div style={FORM}>
-            <label style={LS}>Novo Aviso</label>
-            <textarea value={noticeText} onChange={e=>setNoticeText(e.target.value)} placeholder="Digite o aviso..." style={{...IS,height:80,resize:"vertical"}} />
-            <button onClick={()=>{ if(!noticeText.trim()) return; onSaveNotices([...notices,{id:Date.now(),text:noticeText,date:todayStr(),author:"Administração"}]); setNoticeText(""); }} style={{...BTN_RED,marginTop:10}}>Publicar</button>
-          </div>
-          {[...notices].reverse().map(n=>(
-            <div key={n.id} style={CARD}>
-              <div style={{ fontSize:10, color:C.vermelho, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>{n.author} · {fmtDateShort(n.date)}</div>
-              <div style={{ fontSize:13, color:C.texto, lineHeight:1.5 }}>{n.text}</div>
-              <button onClick={()=>{ if(window.confirm("Remover aviso?")) onSaveNotices(notices.filter(x=>x.id!==n.id)); }} style={{...BTN_SM(C.vermelho),marginTop:10}}>Remover</button>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-
-function ApresentacoesTab({ songs, events, apresentacoes, isAdmin, onSave, accentColor }) {
-  const RED = accentColor || "#B41020";
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", eventId:"", setlist:[] });
-  const [activeApres, setActiveApres] = useState(null);
-  const [modoApres, setModoApres] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [autoPlay, setAutoPlay] = useState(false);
-  const [dragIdx, setDragIdx] = useState(null);
-  const audioRef = React.useRef(null);
-
-  const songMap = songs.reduce((acc,s)=>{acc[s.id]=s;return acc;},{});
-  const today = new Date().toISOString().split("T")[0];
-  const futureEvents = events.filter(e=>e.date>=today&&e.recurrence==="none");
-
-  function addToSetlist(songId) {
-    if (form.setlist.includes(songId)) return;
-    setForm({...form, setlist:[...form.setlist, songId]});
-  }
-
-  function removeFromSetlist(songId) {
-    setForm({...form, setlist:form.setlist.filter(id=>id!==songId)});
-  }
-
-  function moveUp(idx) {
-    if (idx===0) return;
-    const s=[...form.setlist]; [s[idx-1],s[idx]]=[s[idx],s[idx-1]];
-    setForm({...form,setlist:s});
-  }
-
-  function moveDown(idx) {
-    if (idx===form.setlist.length-1) return;
-    const s=[...form.setlist]; [s[idx],s[idx+1]]=[s[idx+1],s[idx]];
-    setForm({...form,setlist:s});
-  }
-
-  function saveApres() {
-    if (!form.title) return;
-    onSave([...apresentacoes, {...form, id:Date.now()}]);
-    setForm({title:"",eventId:"",setlist:[]}); setShowForm(false);
-  }
-
-  function deleteApres(id) {
-    if (window.confirm("Remover apresentação?")) onSave(apresentacoes.filter(a=>a.id!==id));
-  }
-
-  function openModo(apres) {
-    setActiveApres(apres); setCurrentIdx(0); setModoApres(true); setAutoPlay(false);
-  }
-
-  function nextSong() {
-    if (!activeApres) return;
-    setCurrentIdx(i=>Math.min(i+1, activeApres.setlist.length-1));
-  }
-
-  function prevSong() { setCurrentIdx(i=>Math.max(i-1,0)); }
-
-  const currentSong = activeApres ? songMap[activeApres.setlist[currentIdx]] : null;
-  const playbackUrl = currentSong?.files?.playback;
-  let playbackSrc = playbackUrl;
-  if (playbackUrl) { const dm=playbackUrl.match(/\/d\/([^/]+)/); if(dm) playbackSrc="https://drive.google.com/uc?export=download&id="+dm[1]; }
-
-  // Modo Apresentação (tela cheia)
-  if (modoApres && activeApres) return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"#111", zIndex:9999, display:"flex", flexDirection:"column" }}>
-      {/* Header */}
-      <div style={{ background:RED, padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div style={{ color:"#fff" }}>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700 }}>{activeApres.title}</div>
-          <div style={{ fontSize:11, opacity:0.8 }}>{currentIdx+1} / {activeApres.setlist.length}</div>
-        </div>
-        <button onClick={()=>setModoApres(false)} style={{ background:"rgba(255,255,255,0.2)", border:"none", color:"#fff", borderRadius:6, padding:"6px 12px", cursor:"pointer", fontSize:12, fontWeight:700 }}>✕ Sair</button>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ height:3, background:"rgba(255,255,255,0.1)" }}>
-        <div style={{ height:"100%", background:RED, width:`${((currentIdx+1)/activeApres.setlist.length)*100}%`, transition:"width 0.3s" }}/>
-      </div>
-
-      {/* Setlist lateral + player */}
-      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
-        {/* Setlist */}
-        <div style={{ width:180, background:"#1a1a1a", overflowY:"auto", padding:8 }}>
-          {activeApres.setlist.map((sid,i)=>{
-            const s=songMap[sid];
-            return (
-              <div key={sid} onClick={()=>setCurrentIdx(i)} style={{ padding:"8px 10px", borderRadius:6, marginBottom:4, cursor:"pointer", background:i===currentIdx?RED:"transparent", border:"1px solid "+(i===currentIdx?RED:"rgba(255,255,255,0.1)") }}>
-                <div style={{ fontSize:11, fontWeight:700, color:"#fff", opacity:i===currentIdx?1:0.7 }}>{i+1}. {s?.title||"?"}</div>
-                {s?.composer&&<div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:1 }}>{s.composer}</div>}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Player principal */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, overflowY:"auto" }}>
-          {currentSong ? (
-            <>
-              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:"#fff", textAlign:"center", marginBottom:8 }}>{currentSong.title}</div>
-              {currentSong.composer&&<div style={{ fontSize:14, color:"rgba(255,255,255,0.6)", marginBottom:24, fontStyle:"italic" }}>{currentSong.composer}</div>}
-              
-              {/* Playback */}
-              {playbackSrc ? (
-                <div style={{ width:"100%", maxWidth:400, marginBottom:20 }}>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:1, marginBottom:6, textAlign:"center" }}>♪ Playback</div>
-                  <audio ref={audioRef} controls autoPlay={autoPlay} style={{ width:"100%", height:40 }} src={playbackSrc} key={playbackSrc}/>
-                </div>
-              ) : (
-                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:13, marginBottom:20, fontStyle:"italic" }}>Sem playback cadastrado</div>
-              )}
-
-              {/* Toggle auto/manual */}
-              <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-                <button onClick={()=>setAutoPlay(false)} style={{ padding:"6px 16px", borderRadius:20, border:"1px solid rgba(255,255,255,0.3)", background:!autoPlay?"#fff":"transparent", color:!autoPlay?"#111":"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>▶ Manual</button>
-                <button onClick={()=>setAutoPlay(true)} style={{ padding:"6px 16px", borderRadius:20, border:"1px solid rgba(255,255,255,0.3)", background:autoPlay?RED:"transparent", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>⟳ Automático</button>
-              </div>
-
-              {/* Navegação */}
-              <div style={{ display:"flex", gap:12 }}>
-                <button onClick={prevSong} disabled={currentIdx===0} style={{ background:currentIdx===0?"rgba(255,255,255,0.1)":RED, color:"#fff", border:"none", borderRadius:8, padding:"12px 24px", fontSize:14, fontWeight:700, cursor:currentIdx===0?"default":"pointer" }}>← Anterior</button>
-                <button onClick={nextSong} disabled={currentIdx===activeApres.setlist.length-1} style={{ background:currentIdx===activeApres.setlist.length-1?"rgba(255,255,255,0.1)":RED, color:"#fff", border:"none", borderRadius:8, padding:"12px 24px", fontSize:14, fontWeight:700, cursor:currentIdx===activeApres.setlist.length-1?"default":"pointer" }}>Próxima →</button>
-              </div>
-
-              {/* Letra */}
-              {currentSong.letra && (
-                <div style={{ marginTop:24, width:"100%", maxWidth:500, background:"rgba(255,255,255,0.05)", borderRadius:10, padding:16, maxHeight:200, overflowY:"auto" }}>
-                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>🎵 Letra</div>
-                  <div style={{ fontSize:13, lineHeight:1.8, color:"rgba(255,255,255,0.85)" }} dangerouslySetInnerHTML={{__html:currentSong.letra}}/>
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ color:"rgba(255,255,255,0.3)", fontSize:16 }}>Música não encontrada</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Lista de apresentações
-  return (
-    <div>
-      {isAdmin && (
-        <button onClick={()=>setShowForm(!showForm)} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit", marginBottom:18 }}>
-          {showForm?"Cancelar":"+ Nova Apresentação"}
-        </button>
-      )}
-
-      {showForm && isAdmin && (
-        <div style={{ background:"#f9f9f9", border:"1px solid #E8E0E0", borderRadius:8, padding:16, marginBottom:16 }}>
-          <div style={{ marginBottom:10 }}>
-            <label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Nome da Apresentação *</label>
-            <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Apresentação Dia das Mães" style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box" }}/>
-          </div>
-          {futureEvents.length > 0 && (
-            <div style={{ marginBottom:12 }}>
-              <label style={{ display:"block", fontSize:10, color:"#666", fontWeight:700, marginBottom:4, textTransform:"uppercase", letterSpacing:1 }}>Vincular a evento (opcional)</label>
-              <select value={form.eventId} onChange={e=>setForm({...form,eventId:e.target.value})} style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #E8E0E0", fontSize:13, outline:"none", boxSizing:"border-box", background:"#fff" }}>
-                <option value="">Sem vínculo</option>
-                {futureEvents.map(e=><option key={e.id} value={e.id}>{e.title} — {e.date}</option>)}
-              </select>
-            </div>
-          )}
-          
-          {/* Setlist builder */}
-          <div style={{ fontSize:11, fontWeight:700, color:"#666", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Setlist ({form.setlist.length} músicas)</div>
-          
-          {/* Músicas selecionadas */}
-          {form.setlist.length > 0 && (
-            <div style={{ marginBottom:12, background:"#fff", border:"1px solid #E8E0E0", borderRadius:6, overflow:"hidden" }}>
-              {form.setlist.map((sid,i)=>{
-                const s=songMap[sid];
-                return (
-                  <div key={sid} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderBottom:"1px solid #f0f0f0", background:i%2===0?"#fff":"#fafafa" }}>
-                    <span style={{ fontSize:12, color:"#999", minWidth:20, fontWeight:700 }}>{i+1}</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, fontWeight:600 }}>{s?.title||"?"}</div>
-                      {s?.composer&&<div style={{ fontSize:10, color:"#999" }}>{s.composer}</div>}
-                    </div>
-                    <div style={{ display:"flex", gap:4 }}>
-                      <button onClick={()=>moveUp(i)} disabled={i===0} style={{ background:"none", border:"1px solid #ddd", borderRadius:4, padding:"2px 6px", cursor:"pointer", fontSize:12, color:i===0?"#ddd":"#666" }}>▲</button>
-                      <button onClick={()=>moveDown(i)} disabled={i===form.setlist.length-1} style={{ background:"none", border:"1px solid #ddd", borderRadius:4, padding:"2px 6px", cursor:"pointer", fontSize:12, color:i===form.setlist.length-1?"#ddd":"#666" }}>▼</button>
-                      <button onClick={()=>removeFromSetlist(sid)} style={{ background:"none", border:"1px solid #ffcdd2", borderRadius:4, padding:"2px 6px", cursor:"pointer", fontSize:12, color:"#B41020" }}>✕</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Adicionar músicas */}
-          <div style={{ fontSize:10, color:"#999", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Adicionar ao setlist:</div>
-          <div style={{ maxHeight:200, overflowY:"auto", border:"1px solid #E8E0E0", borderRadius:6, background:"#fff" }}>
-            {[...songs].sort((a,b)=>a.title.localeCompare(b.title,"pt-BR")).map(s=>(
-              <div key={s.id} onClick={()=>addToSetlist(s.id)} style={{ padding:"8px 12px", borderBottom:"1px solid #f0f0f0", cursor:form.setlist.includes(s.id)?"default":"pointer", background:form.setlist.includes(s.id)?"#f0f0f0":"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <span style={{ fontSize:13, color:form.setlist.includes(s.id)?"#aaa":"#1A1A1A", fontWeight:500 }}>{s.title}</span>
-                  {s.category&&<span style={{ fontSize:10, color:"#999", marginLeft:6 }}>{s.category}</span>}
-                </div>
-                {form.setlist.includes(s.id) ? <span style={{ fontSize:11, color:"#1B5E20", fontWeight:700 }}>✓</span> : <span style={{ fontSize:18, color:RED }}>+</span>}
-              </div>
-            ))}
-          </div>
-
-          <button onClick={saveApres} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit", marginTop:12 }}>Salvar Apresentação</button>
-        </div>
-      )}
-
-      {apresentacoes.length === 0 && <div style={{ textAlign:"center", color:"#ccc", fontSize:13, padding:"32px 0", fontStyle:"italic" }}>Nenhuma apresentação cadastrada ainda.</div>}
-
-      {[...apresentacoes].sort((a,b)=>a.title.localeCompare(b.title,"pt-BR")).map(apres=>{
-        const linkedEvent = events.find(e=>String(e.id)===String(apres.eventId));
-        return (
-          <div key={apres.id} style={{ background:"#fff", borderRadius:8, border:"1px solid #E8E0E0", marginBottom:12, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
-            <div style={{ padding:"14px 16px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#1A1A1A" }}>{apres.title}</div>
-                  {linkedEvent && <div style={{ fontSize:11, color:"#666", marginTop:2 }}>📅 {linkedEvent.title} — {linkedEvent.date}</div>}
-                  <div style={{ fontSize:11, color:"#999", marginTop:2 }}>{apres.setlist.length} música{apres.setlist.length!==1?"s":""} no setlist</div>
-                  <div style={{ marginTop:6, display:"flex", flexWrap:"wrap", gap:4 }}>
-                    {apres.setlist.map((sid,i)=>{
-                      const s=songMap[sid];
-                      return <span key={sid} style={{ fontSize:10, background:"#f5f5f5", border:"1px solid #E8E0E0", borderRadius:4, padding:"2px 6px", color:"#666" }}>{i+1}. {s?.title||"?"}</span>;
-                    })}
-                  </div>
-                </div>
-                {isAdmin && (
-                  <button onClick={()=>deleteApres(apres.id)} style={{ background:"transparent", color:"#B41020", border:"1px solid #B41020", borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer", marginLeft:8 }}>✕</button>
-                )}
-              </div>
-              <button onClick={()=>openModo(apres)} style={{ background:RED, color:"#fff", border:"none", borderRadius:6, padding:"10px 20px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", marginTop:12, fontFamily:"inherit" }}>
-                🎵 Abrir Modo Apresentação
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── LOGIN ─────────────────────────────────────────────────────
-function LoginScreen({ members, onLogin }) {
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [adminMode, setAdminMode] = useState(false);
-  const [adminPwd, setAdminPwd] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(()=>{ const s=localStorage.getItem("cf_user"); if(s){ try{ onLogin(JSON.parse(s)); }catch{} } },[]);
-
-  function handleQuery(v) { setQuery(v); setSuggestions(v.length>=3?members.filter(m=>m.name.toLowerCase().includes(v.toLowerCase())).slice(0,6):[]); }
-  function selectUser(m) { const u={...m,isAdmin:false}; localStorage.setItem("cf_user",JSON.stringify(u)); onLogin(u); }
-  function loginAdmin() { if(adminPwd===ADMIN_PASSWORD){ const u={id:0,name:"Administrador",isAdmin:true}; localStorage.setItem("cf_user",JSON.stringify(u)); onLogin(u); } else setError("Senha incorreta."); }
-
-  return (
-    <div style={{ minHeight:"100vh", background:C.vermelho, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet" />
-      <div style={{ marginBottom:32, textAlign:"center" }}>
-        <div style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:34, fontWeight:700, letterSpacing:1 }}>Coral Flamboyant</div>
-        <div style={{ width:48, height:2, background:C.verde, margin:"12px auto 8px" }} />
-        <div style={{ color:"rgba(255,255,255,0.65)", fontSize:11, textTransform:"uppercase", letterSpacing:2 }}>Shopping Flamboyant · Goiânia</div>
-      </div>
-      <div style={{ background:C.branco, borderRadius:8, padding:28, width:"100%", maxWidth:360, boxShadow:"0 8px 40px rgba(0,0,0,0.25)" }}>
-        {!adminMode ? (
-          <>
-            <div style={{ fontSize:12, fontWeight:700, color:C.texto, marginBottom:18, textAlign:"center", textTransform:"uppercase", letterSpacing:0.8 }}>Acesse com seu nome</div>
-            <Inp label="Nome" placeholder="Digite pelo menos 3 letras..." value={query} onChange={handleQuery} />
-            {suggestions.length>0 && (
-              <div style={{ border:`1px solid ${C.borda}`, borderRadius:6, overflow:"hidden", marginTop:-8, marginBottom:12 }}>
-                {suggestions.map(m=>(
-                  <div key={m.id} onClick={()=>selectUser(m)} style={{ padding:"10px 14px", cursor:"pointer", borderBottom:`1px solid ${C.borda}`, display:"flex", justifyContent:"space-between", alignItems:"center", background:C.branco }}>
-                    <div>
-                      <span style={{ fontSize:13, fontWeight:600, color:C.texto }}>{m.name}</span>
-                      {!m.active && <span style={{ fontSize:10, color:C.textoLeve, marginLeft:6 }}>(inativo)</span>}
-                    </div>
-                    <span style={{ fontSize:9, color:VOICE_COLORS[m.voice], fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>{VOICE_LABELS[m.voice]}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {query.length>=3&&suggestions.length===0&&<div style={{ color:C.vermelho, fontSize:12, textAlign:"center", marginBottom:12, fontStyle:"italic" }}>Nome não encontrado. Fale com a administração.</div>}
-            <button onClick={()=>setAdminMode(true)} style={{ background:"none", border:"none", color:C.textoLeve, fontSize:11, cursor:"pointer", width:"100%", textAlign:"center", marginTop:10, fontFamily:"inherit", textTransform:"uppercase", letterSpacing:0.8 }}>Acesso administrativo</button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize:12, fontWeight:700, color:C.texto, marginBottom:18, textAlign:"center", textTransform:"uppercase", letterSpacing:0.8 }}>Administração</div>
-            <Inp label="Senha" type="password" value={adminPwd} onChange={v=>{ setAdminPwd(v); setError(""); }} />
-            {error && <div style={{ color:C.vermelho, fontSize:12, marginBottom:10, textAlign:"center" }}>{error}</div>}
-            <button onClick={loginAdmin} style={BTN_RED}>Entrar</button>
-            <button onClick={()=>{ setAdminMode(false); setAdminPwd(""); setError(""); }} style={{ background:"none", border:"none", color:C.textoLeve, fontSize:11, cursor:"pointer", width:"100%", textAlign:"center", marginTop:10, fontFamily:"inherit" }}>← Voltar</button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── ASSINATURAS ───────────────────────────────────────────────
-const PAULO_SIG = "paulo-sig.png";
-const LUCIA_SIG = "lucia-sig.png";
-
-// ── APP PRINCIPAL ─────────────────────────────────────────────
-function CoralFlamboyant() {
+// ── APP PRINCIPAL ──────────────────────────────────────────────────────────────
+function App() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const [members, setMembers] = useState(()=>gs("cf_members",INIT_MEMBERS));
-  const [events, setEvents] = useState(()=>gs("cf_events",INIT_EVENTS));
-  const [songs, setSongs] = useState(()=>gs("cf_songs",INIT_SONGS));
-  const [notices, setNotices] = useState(()=>gs("cf_notices",INIT_NOTICES));
-  const [materials, setMaterials] = useState(()=>gs("cf_materials",INIT_MATERIALS));
-
-  useEffect(()=>ss("cf_members",members),[members]);
-  useEffect(()=>ss("cf_events",events),[events]);
-  useEffect(()=>ss("cf_songs",songs),[songs]);
-  useEffect(()=>ss("cf_notices",notices),[notices]);
-  useEffect(()=>ss("cf_materials",materials),[materials]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState(0);
+  const { data: members, loading: loadingMembers } = useCollection("members");
 
   useEffect(() => {
-    loadFromFirebase([
-      ["cf_members", setMembers, INIT_MEMBERS],
-      ["cf_events", setEvents, INIT_EVENTS],
-      ["cf_songs", setSongs, INIT_SONGS],
-      ["cf_notices", setNotices, INIT_NOTICES],
-      ["cf_materials", setMaterials, INIT_MATERIALS],
-      ["cf_song_cats", setSongCats, INIT_SONG_CATS_FLAMB],
-      ["cf_apresentacoes", setApresentacoes, []],
-    ]);
+    const saved = localStorage.getItem("cf_user");
+    if (saved) { try { setUser(JSON.parse(saved)); } catch {} }
+    setLoading(false);
   }, []);
 
-  if (!user) return <LoginScreen members={members} onLogin={setUser} />;
+  if (loading || loadingMembers) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:12,color:C.textoSub}}>
+    <div style={{width:40,height:40,border:`3px solid ${C.vermelho}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+    <div style={{fontFamily:"sans-serif",fontSize:14}}>Carregando...</div>
+  </div>;
+
+  if (!user) return <Login members={members} onLogin={setUser}/>;
 
   const isAdmin = user.isAdmin;
-  const isCorista = !isAdmin;
-  const currentMember = isCorista ? members.find(m=>m.id===user.id) : null;
+  const tabs = isAdmin
+    ? [{label:"Painel",icon:"📊"},{label:"Agenda",icon:"📅"},{label:"Músicas",icon:"🎵"},{label:"Estudos",icon:"📚"},{label:"Avisos",icon:"📢"},{label:"Equipe",icon:"👥"}]
+    : [{label:"Agenda",icon:"📅"},{label:"Músicas",icon:"🎵"},{label:"Estudos",icon:"📚"},{label:"Avisos",icon:"📢"}];
 
-  const tabs = [
-    { label:"Agenda", icon:"📅" },
-    { label:"Kits", icon:"🎵" },
-    { label:"Estudos", icon:"📚" },
-    ...(isCorista ? [{ label:"Declaração", icon:"📋" }] : []),
-    ...(isAdmin ? [{ label:"Relatório", icon:"📊" }, { label:"Cadastro", icon:"👥" }] : []),
-  ];
+  const pages = isAdmin
+    ? [<Painel user={user}/>, <Agenda user={user}/>, <Repertorio user={user}/>, <SalaEstudos user={user}/>, <Avisos user={user}/>, <Integrantes user={user}/>]
+    : [<Agenda user={user}/>, <Repertorio user={user}/>, <SalaEstudos user={user}/>, <Avisos user={user}/>];
 
-  return (
-    <div style={{ minHeight:"100vh", background:C.fundo, fontFamily:"'Lato',sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet" />
-      <div style={{ background:C.vermelho, padding:"14px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 8px rgba(0,0,0,0.15)" }}>
-        <div>
-          <div style={{ fontFamily:"'Playfair Display',serif", color:"#fff", fontSize:18, fontWeight:700, letterSpacing:0.5 }}>Coral Flamboyant</div>
-          <div style={{ color:"rgba(255,255,255,0.65)", fontSize:10, textTransform:"uppercase", letterSpacing:1, marginTop:1 }}>Olá, {user.name.split(" ")[0]}{isAdmin?" · Admin":""}</div>
-        </div>
-        <button onClick={()=>{ localStorage.removeItem("cf_user"); setUser(null); setActiveTab(0); }} style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.4)", color:"#fff", borderRadius:4, padding:"5px 12px", fontSize:10, cursor:"pointer", fontFamily:"inherit", textTransform:"uppercase", letterSpacing:0.8 }}>Sair</button>
+  return <div style={{minHeight:"100vh",background:C.fundo,display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto",boxShadow:"0 0 20px rgba(0,0,0,0.08)"}}>
+    <div style={{background:C.vermelho,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100}}>
+      <div>
+        <div style={{fontFamily:"'Playfair Display',serif",color:"#fff",fontSize:17,fontWeight:700}}>Coral Flamboyant</div>
+        <div style={{color:"rgba(255,255,255,0.7)",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Olá, {user.name.split(" ")[0]}{isAdmin?" · Admin":""}</div>
       </div>
-
-      <div style={{ padding:"18px 16px 90px", maxWidth:600, margin:"0 auto" }}>
-        <NoticeBar notices={notices} members={members} />
-        {activeTab===0 && <AgendaTab events={events} isAdmin={isAdmin} onSave={setEvents} />}
-        {activeTab===1 && <KitsTab songs={songs} isAdmin={isAdmin} onSave={setSongs} />}
-        {activeTab===2 && <EstudosTab materials={materials} isAdmin={isAdmin} onSave={setMaterials} />}
-        {activeTab===3 && isCorista && currentMember && <DeclaracaoTab member={currentMember} events={events} pauloSig={PAULO_SIG} luciaSig={LUCIA_SIG} />}
-        {activeTab===3 && isAdmin && <RelatorioTab members={members} events={events} songs={songs} materials={materials} pauloSig={PAULO_SIG} luciaSig={LUCIA_SIG} />}
-        {activeTab===4 && isAdmin && <CadastroTab members={members} onSave={setMembers} notices={notices} onSaveNotices={setNotices} />}
-      </div>
-
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:C.branco, borderTop:`1px solid ${C.borda}`, display:"flex", zIndex:100, boxShadow:"0 -2px 12px rgba(0,0,0,0.06)" }}>
-        {tabs.map((tab,i)=>(
-          <button key={i} onClick={()=>setActiveTab(i)} style={{ flex:1, padding:"10px 0 8px", border:"none", background:"none", cursor:"pointer", color:activeTab===i?C.vermelho:C.textoLeve, borderTop:`2px solid ${activeTab===i?C.vermelho:"transparent"}`, fontSize:9, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontFamily:"inherit" }}>
-            <span style={{ fontSize:18 }}>{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <button onClick={()=>{localStorage.removeItem("cf_user");setUser(null);setTab(0);}} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:4,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit",textTransform:"uppercase",letterSpacing:0.8}}>Sair</button>
     </div>
-  );
+    <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
+      {pages[tab]}
+    </div>
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#fff",borderTop:`1px solid ${C.borda}`,display:"flex",zIndex:100}}>
+      {tabs.map((t,i)=>(
+        <button key={i} className="tab-btn" onClick={()=>setTab(i)} style={{color:tab===i?C.vermelho:C.textoLeve,borderTop:`2px solid ${tab===i?C.vermelho:"transparent"}`}}>
+          <span style={{fontSize:18}}>{t.icon}</span>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  </div>;
 }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<CoralFlamboyant />);
-  </script>
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
 </body>
 </html>
