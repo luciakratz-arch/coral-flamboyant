@@ -4,704 +4,782 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coral Flamboyant</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Lato',sans-serif; background:#FAFAFA; }
-    audio { accent-color:#B41020; }
-    ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:#ddd; border-radius:4px; }
-    .tab-btn { flex:1; padding:10px 0 8px; border:none; background:none; cursor:pointer; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; display:flex; flex-direction:column; align-items:center; gap:3px; font-family:inherit; transition:color 0.2s; }
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
-    .modal-box { background:#fff; border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    .fade-in { animation: fadeIn 0.3s ease; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Inter',sans-serif;background:#F4F4F6;color:#1A1A2E;}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeIn 0.25s ease}
+    .sidebar{width:240px;min-height:100vh;background:#7B1020;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:100}
+    .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
+    .sidebar-logo-icon{width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px}
+    .sidebar-logo-title{font-family:'Playfair Display',serif;color:#fff;font-size:16px;font-weight:700;line-height:1.2}
+    .sidebar-logo-sub{color:rgba(255,255,255,0.6);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:2px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;color:rgba(255,255,255,0.7);font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all 0.15s;border-left:3px solid transparent}
+    .nav-item:hover{background:rgba(255,255,255,0.08);color:#fff}
+    .nav-item.active{background:rgba(255,255,255,0.12);color:#fff;border-left-color:#fff}
+    .nav-item-icon{font-size:16px;width:20px;text-align:center}
+    .nav-section{padding:16px 20px 6px;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+    .sidebar-user{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1)}
+    .sidebar-user-name{color:#fff;font-size:13px;font-weight:600}
+    .sidebar-user-role{color:rgba(255,255,255,0.5);font-size:11px;margin-top:2px}
+    .logout-btn{margin-top:10px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);border:none;border-radius:6px;padding:7px 12px;font-size:11px;cursor:pointer;font-family:inherit;width:100%;text-align:left;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;transition:background 0.15s}
+    .logout-btn:hover{background:rgba(255,255,255,0.18)}
+    .main-content{margin-left:240px;min-height:100vh;padding:28px 32px}
+    .page-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#1A1A2E;margin-bottom:4px}
+    .page-sub{font-size:13px;color:#888;margin-bottom:24px}
+    .card{background:#fff;border-radius:10px;border:1px solid #EAEAEA;padding:20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    .btn-red{background:#7B1020;color:#fff;border:none;border-radius:7px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s}
+    .btn-red:hover{background:#9B1525}
+    .btn-outline{background:transparent;color:#7B1020;border:1px solid #7B1020;border-radius:7px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+    .btn-sm{background:transparent;border:1px solid #ddd;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;color:#666;font-weight:600}
+    .btn-sm:hover{border-color:#7B1020;color:#7B1020}
+    .btn-sm-red{background:transparent;border:1px solid #fcc;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;color:#c00;font-weight:600}
+    .input{width:100%;padding:9px 12px;border-radius:7px;border:1px solid #E0E0E0;font-size:13px;outline:none;font-family:inherit;color:#1A1A2E;background:#fff;transition:border-color 0.15s}
+    .input:focus{border-color:#7B1020}
+    .label{display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px}
+    .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+    .modal-box{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+    .modal-title{font-size:17px;font-weight:700;color:#1A1A2E;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+    .stat-card{background:#fff;border-radius:10px;border:1px solid #EAEAEA;padding:20px;display:flex;flex-direction:column;gap:4px}
+    .stat-val{font-size:28px;font-weight:700;color:#7B1020}
+    .stat-label{font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.8px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:900px){.sidebar{width:200px}.main-content{margin-left:200px;padding:20px}}
+    @media(max-width:700px){.sidebar{display:none}.main-content{margin-left:0;padding:16px}.grid-4{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 <body>
 <div id="root">
-  <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#666">
-    <div style="width:40px;height:40px;border:3px solid #B41020;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-    <div style="font-family:sans-serif;font-size:14px">Carregando...</div>
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#888">
+    <div style="width:36px;height:36px;border:3px solid #7B1020;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <div style="font-size:14px">Carregando...</div>
   </div>
 </div>
 <script>
 firebase.initializeApp({
-  apiKey: "AIzaSyDcLsndRbDPeUru_Di-h3w8RP_Ung-YSUo",
-  authDomain: "flamboyant-coral.firebaseapp.com",
-  projectId: "flamboyant-coral",
-  storageBucket: "flamboyant-coral.firebasestorage.app",
-  messagingSenderId: "15022873086",
-  appId: "1:15022873086:web:507d97757035ac90d108af"
+  apiKey:"AIzaSyDcLsndRbDPeUru_Di-h3w8RP_Ung-YSUo",
+  authDomain:"flamboyant-coral.firebaseapp.com",
+  projectId:"flamboyant-coral",
+  storageBucket:"flamboyant-coral.firebasestorage.app",
+  messagingSenderId:"15022873086",
+  appId:"1:15022873086:web:507d97757035ac90d108af"
 });
 const db = firebase.firestore();
 </script>
 <script type="text/babel">
-const { useState, useEffect, useRef, useCallback } = React;
+const {useState,useEffect,useRef} = React;
 
-// ── CONSTANTES ──────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = "1234";
-const C = { vermelho:"#B41020", verde:"#1B5E20", branco:"#FFFFFF", fundo:"#FAFAFA", borda:"#E8E0E0", texto:"#1A1A1A", textoSub:"#666666", textoLeve:"#999999" };
-const VOICE_LABELS = { soprano:"Soprano", contralto:"Contralto", alto:"Alto", tenor:"Tenor", baixo:"Baixo" };
-const VOICE_COLORS = { soprano:"#B41020", contralto:"#7B1FA2", alto:"#E65100", tenor:"#1565C0", baixo:"#1B5E20" };
+const VOICE_LABELS = {soprano:"Soprano",contralto:"Contralto",alto:"Alto",tenor:"Tenor",baixo:"Baixo"};
+const VOICE_COLORS = {soprano:"#B41020",contralto:"#7B1FA2",alto:"#E65100",tenor:"#1565C0",baixo:"#1B5E20"};
 const FILE_FIELDS = [
-  { key:"original", label:"Música Original", icon:"♩", type:"audio" },
-  { key:"playback", label:"Playback", icon:"♪", type:"audio" },
-  { key:"partitura", label:"Partitura", icon:"𝄞", type:"doc" },
-  { key:"soprano", label:"Soprano", icon:"●", type:"audio" },
-  { key:"contralto", label:"Contralto", icon:"●", type:"audio" },
-  { key:"alto", label:"Alto", icon:"●", type:"audio" },
-  { key:"tenor", label:"Tenor", icon:"●", type:"audio" },
-  { key:"baixo", label:"Baixo", icon:"●", type:"audio" },
+  {key:"original",label:"Música Original",icon:"♩",type:"audio"},
+  {key:"playback",label:"Playback",icon:"♪",type:"audio"},
+  {key:"partitura",label:"Partitura",icon:"𝄞",type:"doc"},
+  {key:"soprano",label:"Soprano",icon:"●",type:"audio"},
+  {key:"contralto",label:"Contralto",icon:"●",type:"audio"},
+  {key:"alto",label:"Alto",icon:"●",type:"audio"},
+  {key:"tenor",label:"Tenor",icon:"●",type:"audio"},
+  {key:"baixo",label:"Baixo",icon:"●",type:"audio"},
 ];
-const STUDY_CATEGORIES = [
-  { key:"tecnica", label:"Técnica Vocal", color:"#B41020" },
-  { key:"teoria", label:"Teoria Musical", color:"#1565C0" },
-  { key:"aquecimento", label:"Aquecimento", color:"#E65100" },
-  { key:"videos", label:"Vídeos de Referência", color:"#6A1B9A" },
-  { key:"outros", label:"Outros", color:"#1B5E20" },
+const STUDY_CATS = [
+  {key:"tecnica",label:"Técnica Vocal",color:"#B41020"},
+  {key:"teoria",label:"Teoria Musical",color:"#1565C0"},
+  {key:"aquecimento",label:"Aquecimento",color:"#E65100"},
+  {key:"videos",label:"Vídeos",color:"#6A1B9A"},
+  {key:"outros",label:"Outros",color:"#1B5E20"},
 ];
 const EVENT_STATUS = [
-  { key:"normal", label:"Normal", color:"#1B5E20", icon:"●" },
-  { key:"cancelado", label:"Cancelado", color:"#B41020", icon:"✕" },
-  { key:"feriado", label:"Feriado / Recesso", color:"#E65100", icon:"✦" },
-  { key:"reagendado", label:"Reagendado", color:"#1565C0", icon:"↗" },
-  { key:"suspenso", label:"Suspenso", color:"#7B1FA2", icon:"⏸" },
+  {key:"planejado",label:"Planejado",color:"#888"},
+  {key:"confirmado",label:"Confirmado",color:"#1B5E20"},
+  {key:"cancelado",label:"Cancelado",color:"#B41020"},
+  {key:"reagendado",label:"Reagendado",color:"#1565C0"},
+  {key:"suspenso",label:"Suspenso",color:"#7B1FA2"},
+  {key:"feriado",label:"Feriado",color:"#E65100"},
 ];
-const RECURRENCE_OPTIONS = [
-  { key:"none", label:"Evento único" },
-  { key:"weekly", label:"Semanal" },
-  { key:"biweekly", label:"Quinzenal" },
-  { key:"monthly", label:"Mensal" },
-];
-const WEEKDAYS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const EVENT_TYPES = ["Ensaio","Apresentação","Viagem","Reunião","Outro"];
+const RECURRENCE = [{key:"none",label:"Evento único"},{key:"weekly",label:"Semanal"},{key:"biweekly",label:"Quinzenal"},{key:"monthly",label:"Mensal"}];
 const MONTHS_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
-const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const PRIORITY_COLORS = {urgente:"#B41020",importante:"#E65100",normal:"#1B5E20"};
 
-// ── ESTILOS ──────────────────────────────────────────────────────────────────
-const LS = { display:"block", fontSize:10, color:C.textoSub, fontWeight:700, marginBottom:5, textTransform:"uppercase", letterSpacing:1.2 };
-const IS = { width:"100%", padding:"10px 12px", borderRadius:6, border:`1px solid ${C.borda}`, fontSize:13, outline:"none", background:C.branco, color:C.texto, fontFamily:"inherit" };
-const BTN = (bg,color="#fff") => ({ background:bg, color, border:"none", borderRadius:6, padding:"11px 18px", fontSize:13, fontWeight:700, cursor:"pointer", width:"100%", fontFamily:"inherit" });
-const BTN_SM = (c) => ({ background:"transparent", color:c, border:`1px solid ${c}`, borderRadius:4, padding:"3px 8px", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:600 });
-const CARD = { background:C.branco, borderRadius:8, border:`1px solid ${C.borda}`, padding:16, marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+function todayStr(){return new Date().toISOString().split("T")[0];}
+function fmtDate(d){if(!d)return"";const[y,m,dd]=d.split("-");return`${parseInt(dd)} de ${MONTHS_PT[parseInt(m)-1]} de ${y}`;}
+function fmtShort(d){if(!d)return"";const[,m,dd]=d.split("-");return`${parseInt(dd)}/${m}`;}
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function fmtDate(d) { if (!d) return ""; const [y,m,dd] = d.split("-"); return `${parseInt(dd)} de ${MONTHS_PT[parseInt(m)-1]} de ${y}`; }
-function fmtDateShort(d) { if (!d) return ""; const [,m,dd] = d.split("-"); return `${parseInt(dd)}/${m}`; }
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
-
-// ── FIREBASE HOOKS ────────────────────────────────────────────────────────────
-function useCollection(col) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const unsub = db.collection(col).orderBy("createdAt","desc").onSnapshot(snap => {
-      setData(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+function useCollection(col){
+  const [data,setData]=useState([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    const unsub=db.collection(col).orderBy("createdAt","desc").onSnapshot(snap=>{
+      setData(snap.docs.map(d=>({id:d.id,...d.data()})));
       setLoading(false);
-    }, () => setLoading(false));
+    },()=>setLoading(false));
     return unsub;
-  }, [col]);
-  return { data, loading };
+  },[col]);
+  return {data,loading};
 }
+async function addDoc(col,data){return db.collection(col).add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
+async function updateDoc(col,id,data){return db.collection(col).doc(id).update({...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});}
+async function delDoc(col,id){return db.collection(col).doc(id).delete();}
 
-async function addDoc(col, data) {
-  return db.collection(col).add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-}
-async function updateDoc(col, id, data) {
-  return db.collection(col).doc(id).update({ ...data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-}
-async function deleteDoc(col, id) {
-  return db.collection(col).doc(id).delete();
-}
+function Spinner(){return<div style={{display:"flex",justifyContent:"center",padding:40}}><div style={{width:28,height:28,border:"3px solid #7B1020",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/></div>;}
+function Empty({icon,msg}){return<div style={{textAlign:"center",padding:48,color:"#aaa"}}><div style={{fontSize:36,marginBottom:8}}>{icon}</div><div style={{fontSize:13}}>{msg}</div></div>;}
+function Badge({color,label}){return<span className="badge" style={{background:color+"22",color}}>{label}</span>;}
 
-// ── COMPONENTES BASE ──────────────────────────────────────────────────────────
-function Spinner() {
-  return <div style={{display:"flex",justifyContent:"center",padding:40}}>
-    <div style={{width:32,height:32,border:"3px solid #B41020",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-  </div>;
-}
-
-function Modal({ title, onClose, children }) {
-  return <div className="modal-overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
-    <div className="modal-box">
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div style={{fontWeight:700,fontSize:16,color:C.texto}}>{title}</div>
-        <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.textoSub}}>×</button>
-      </div>
+function Modal({title,onClose,children,wide}){
+  return<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="modal-box" style={{maxWidth:wide?700:520}}>
+      <div className="modal-title">{title}<button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#aaa",lineHeight:1}}>×</button></div>
       {children}
     </div>
   </div>;
 }
 
-function Badge({ color, children }) {
-  return <span style={{background:color+"22",color,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
-}
-
-function EmptyState({ icon, msg }) {
-  return <div style={{textAlign:"center",padding:40,color:C.textoLeve}}>
-    <div style={{fontSize:32,marginBottom:8}}>{icon}</div>
-    <div style={{fontSize:13}}>{msg}</div>
+function FRow({label,children,half}){
+  return<div style={{marginBottom:14,flex:half?"1":"unset"}}>
+    <label className="label">{label}</label>
+    {children}
   </div>;
 }
 
-// ── LOGIN ──────────────────────────────────────────────────────────────────────
-function Login({ members, onLogin }) {
-  const [mode, setMode] = useState("member"); // "member" | "admin"
-  const [search, setSearch] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [err, setErr] = useState("");
+// ── LOGIN ──────────────────────────────────────────────────────────────────
+function Login({members,onLogin}){
+  const [mode,setMode]=useState("member");
+  const [search,setSearch]=useState("");
+  const [pwd,setPwd]=useState("");
+  const [err,setErr]=useState("");
+  const filtered=members.filter(m=>m.active&&m.name&&m.name.toLowerCase().includes(search.toLowerCase()));
 
-  const filtered = members.filter(m => m.active && m.name.toLowerCase().includes(search.toLowerCase()));
-
-  function selectMember(m) {
-    localStorage.setItem("cf_user", JSON.stringify({ id:m.id, name:m.name, voice:m.voice, isAdmin:false }));
-    onLogin({ id:m.id, name:m.name, voice:m.voice, isAdmin:false });
-  }
-
-  function loginAdmin() {
-    if (pwd === ADMIN_PASSWORD) {
-      const u = { id:"admin", name:"Administrador", isAdmin:true };
-      localStorage.setItem("cf_user", JSON.stringify(u));
-      onLogin(u);
-    } else setErr("Senha incorreta");
-  }
-
-  return <div style={{minHeight:"100vh",background:C.vermelho,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}}>
-    <div style={{fontFamily:"'Playfair Display',serif",color:"#fff",fontSize:28,fontWeight:700,marginBottom:4}}>Coral Flamboyant</div>
-    <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,marginBottom:24,textTransform:"uppercase",letterSpacing:1.5}}>Portal do Corista</div>
-    <div style={{background:"#fff",borderRadius:12,padding:24,width:"100%",maxWidth:360,boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}}>
-      <div style={{display:"flex",gap:8,marginBottom:20}}>
-        {["member","admin"].map(m => (
-          <button key={m} onClick={() => { setMode(m); setErr(""); }}
-            style={{flex:1,padding:"8px",borderRadius:6,border:`1px solid ${mode===m?C.vermelho:C.borda}`,background:mode===m?C.vermelho:"#fff",color:mode===m?"#fff":C.textoSub,fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
-            {m==="member" ? "Sou Corista" : "Admin"}
-          </button>
-        ))}
+  return<div style={{minHeight:"100vh",background:"#7B1020",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{width:56,height:56,background:"rgba(255,255,255,0.15)",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 12px"}}>🎵</div>
+        <div style={{fontFamily:"'Playfair Display',serif",color:"#fff",fontSize:28,fontWeight:700}}>Coral Flamboyant</div>
+        <div style={{color:"rgba(255,255,255,0.6)",fontSize:12,textTransform:"uppercase",letterSpacing:1.5,marginTop:4}}>Portal do Corista</div>
       </div>
-      {mode === "member" ? (<>
-        <input style={IS} placeholder="Buscar seu nome..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus/>
-        <div style={{maxHeight:220,overflowY:"auto",marginTop:8}}>
-          {filtered.length === 0 && <div style={{textAlign:"center",color:C.textoLeve,fontSize:13,padding:20}}>Nenhum membro encontrado</div>}
-          {filtered.map(m => (
-            <button key={m.id} onClick={() => selectMember(m)}
-              style={{width:"100%",textAlign:"left",padding:"10px 12px",border:"none",borderBottom:`1px solid ${C.borda}`,background:"none",cursor:"pointer",fontFamily:"inherit"}}>
-              <div style={{fontWeight:700,fontSize:13,color:C.texto}}>{m.name}</div>
-              <div style={{fontSize:11,color:VOICE_COLORS[m.voice]||C.textoSub}}>{VOICE_LABELS[m.voice]||m.voice}</div>
+      <div style={{background:"#fff",borderRadius:14,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+        <div style={{display:"flex",gap:8,marginBottom:20}}>
+          {["member","admin"].map(m=>(
+            <button key={m} onClick={()=>{setMode(m);setErr("");}}
+              style={{flex:1,padding:"9px",borderRadius:7,border:`1.5px solid ${mode===m?"#7B1020":"#E0E0E0"}`,background:mode===m?"#7B1020":"#fff",color:mode===m?"#fff":"#888",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+              {m==="member"?"Sou Corista":"Administrador"}
             </button>
           ))}
         </div>
-      </>) : (<>
-        <input type="password" style={IS} placeholder="Senha do admin" value={pwd} onChange={e=>{setPwd(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&loginAdmin()} autoFocus/>
-        {err && <div style={{color:C.vermelho,fontSize:12,marginTop:6}}>{err}</div>}
-        <button onClick={loginAdmin} style={{...BTN(C.vermelho),marginTop:12}}>Entrar</button>
-      </>)}
+        {mode==="member"?(<>
+          <input className="input" placeholder="Digite seu nome..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus style={{marginBottom:8}}/>
+          <div style={{maxHeight:240,overflowY:"auto",border:"1px solid #eee",borderRadius:8}}>
+            {filtered.length===0?<div style={{textAlign:"center",color:"#bbb",fontSize:13,padding:24}}>Nenhum membro encontrado</div>:
+            filtered.map(m=>(
+              <button key={m.id} onClick={()=>{const u={id:m.id,name:m.name,voice:m.voice,isAdmin:false};localStorage.setItem("cf_user",JSON.stringify(u));onLogin(u);}}
+                style={{width:"100%",textAlign:"left",padding:"11px 14px",border:"none",borderBottom:"1px solid #f5f5f5",background:"#fff",cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}
+                onMouseOver={e=>e.currentTarget.style.background="#fafafa"} onMouseOut={e=>e.currentTarget.style.background="#fff"}>
+                <div style={{fontWeight:600,fontSize:13,color:"#1A1A2E"}}>{m.name}</div>
+                <div style={{fontSize:11,color:VOICE_COLORS[m.voice]||"#888",marginTop:1}}>{VOICE_LABELS[m.voice]||m.voice}</div>
+              </button>
+            ))}
+          </div>
+        </>):(<>
+          <input type="password" className="input" placeholder="Senha do administrador" value={pwd} onChange={e=>{setPwd(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&(pwd===ADMIN_PASSWORD?(()=>{const u={id:"admin",name:"Administrador",isAdmin:true};localStorage.setItem("cf_user",JSON.stringify(u));onLogin(u);})():setErr("Senha incorreta"))} autoFocus/>
+          {err&&<div style={{color:"#c00",fontSize:12,marginTop:6}}>{err}</div>}
+          <button className="btn-red" style={{width:"100%",marginTop:14}} onClick={()=>pwd===ADMIN_PASSWORD?(()=>{const u={id:"admin",name:"Administrador",isAdmin:true};localStorage.setItem("cf_user",JSON.stringify(u));onLogin(u);})():setErr("Senha incorreta")}>Entrar</button>
+        </>)}
+      </div>
     </div>
   </div>;
 }
 
-// ── AGENDA ─────────────────────────────────────────────────────────────────────
-function Agenda({ user }) {
-  const { data: events, loading } = useCollection("events");
-  const [month, setMonth] = useState(new Date().getMonth());
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ title:"Ensaio", date:todayStr(), timeChegada:"", timeApresentacao:"", location:"", vestuario:"", description:"", status:"normal", statusNote:"", recurrence:"none" });
+// ── SIDEBAR ────────────────────────────────────────────────────────────────
+function Sidebar({user,tab,setTab}){
+  const adminNav=[
+    {id:"painel",icon:"📊",label:"Painel"},
+    {id:"agenda",icon:"📅",label:"Agenda"},
+    {id:"repertorio",icon:"🎵",label:"Repertório"},
+    {id:"estudos",icon:"📚",label:"Sala de Estudos"},
+    {id:"avisos",icon:"📢",label:"Avisos"},
+    {id:"integrantes",icon:"👥",label:"Integrantes"},
+    {id:"frequencia",icon:"✅",label:"Frequência"},
+    {id:"relatorios",icon:"📈",label:"Relatórios"},
+    {id:"declaracao",icon:"📋",label:"Declaração Digital"},
+    {id:"apresentacao",icon:"🎤",label:"Apresentação"},
+  ];
+  const coristNav=[
+    {id:"agenda",icon:"📅",label:"Agenda"},
+    {id:"repertorio",icon:"🎵",label:"Repertório"},
+    {id:"estudos",icon:"📚",label:"Sala de Estudos"},
+    {id:"avisos",icon:"📢",label:"Avisos"},
+    {id:"perfil",icon:"👤",label:"Meu Perfil"},
+    {id:"declaracao",icon:"📋",label:"Declaração"},
+    {id:"apresentacao",icon:"🎤",label:"Apresentação"},
+  ];
+  const nav = user.isAdmin ? adminNav : coristNav;
 
-  const monthEvents = events.filter(e => {
-    if (!e.date) return false;
-    const [y,m] = e.date.split("-");
-    return parseInt(m)-1===month && parseInt(y)===year;
-  }).sort((a,b) => a.date > b.date ? 1 : -1);
+  return<div className="sidebar">
+    <div className="sidebar-logo">
+      <div className="sidebar-logo-icon">🎵</div>
+      <div className="sidebar-logo-title">Coral Flamboyant</div>
+      <div className="sidebar-logo-sub">Portal de Gestão</div>
+    </div>
+    <div style={{flex:1,overflowY:"auto",padding:"12px 0"}}>
+      {nav.map(n=>(
+        <button key={n.id} className={`nav-item${tab===n.id?" active":""}`} onClick={()=>setTab(n.id)}>
+          <span className="nav-item-icon">{n.icon}</span>
+          {n.label}
+        </button>
+      ))}
+    </div>
+    <div className="sidebar-user">
+      <div className="sidebar-user-name">{user.name}</div>
+      <div className="sidebar-user-role">{user.isAdmin?"Administrador":VOICE_LABELS[user.voice]||"Corista"}</div>
+      <button className="logout-btn" onClick={()=>{localStorage.removeItem("cf_user");window.location.reload();}}>↩ Sair</button>
+    </div>
+  </div>;
+}
 
-  function openEdit(ev) {
-    setEditing(ev.id);
-    setForm({ title:ev.title||"", date:ev.date||"", timeChegada:ev.timeChegada||"", timeApresentacao:ev.timeApresentacao||"", location:ev.location||"", vestuario:ev.vestuario||"", description:ev.description||"", status:ev.status||"normal", statusNote:ev.statusNote||"", recurrence:ev.recurrence||"none" });
-    setShowForm(true);
+// ── PAINEL ─────────────────────────────────────────────────────────────────
+function Painel(){
+  const {data:members}=useCollection("members");
+  const {data:events}=useCollection("events");
+  const {data:songs}=useCollection("songs");
+  const {data:avisos}=useCollection("avisos");
+  const today=todayStr();
+  const ativos=members.filter(m=>m.active);
+  const prox=events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1).slice(0,4);
+  const cm=new Date().getMonth()+1;
+  const bdayS=members.filter(m=>m.active&&m.birthday&&parseInt(m.birthday.split("-")[1])===cm);
+
+  return<div>
+    <div className="page-title">Painel</div>
+    <div className="page-sub">Visão geral do Coral Flamboyant</div>
+    <div className="grid-4">
+      {[["👥","Integrantes",ativos.length,"ativos"],["🎵","Músicas",songs.length,"no repertório"],["📅","Eventos",events.length,"cadastrados"],["🎂","Aniversários",bdayS.length,"este mês"]].map(([icon,label,val,sub])=>(
+        <div key={label} className="stat-card">
+          <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
+          <div className="stat-val">{val}</div>
+          <div className="stat-label">{sub}</div>
+          <div style={{fontSize:12,color:"#888",marginTop:2}}>{label}</div>
+        </div>
+      ))}
+    </div>
+    <div className="grid-2">
+      <div>
+        <div style={{fontSize:14,fontWeight:700,color:"#1A1A2E",marginBottom:12}}>Próximos eventos</div>
+        {prox.length===0?<Empty icon="📅" msg="Nenhum evento próximo"/>:prox.map(e=>{
+          const st=EVENT_STATUS.find(s=>s.key===e.status)||EVENT_STATUS[0];
+          return<div key={e.id} className="card" style={{padding:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:14,color:"#1A1A2E"}}>{e.title}</div>
+                <div style={{fontSize:12,color:"#888",marginTop:2}}>{fmtDate(e.date)}{e.timeChegada&&` · ${e.timeChegada}`}</div>
+                {e.location&&<div style={{fontSize:12,color:"#888"}}>📍 {e.location}</div>}
+              </div>
+              <Badge color={st.color} label={st.label}/>
+            </div>
+          </div>;
+        })}
+      </div>
+      <div>
+        <div style={{fontSize:14,fontWeight:700,color:"#1A1A2E",marginBottom:12}}>Avisos recentes</div>
+        {avisos.slice(0,3).map(a=>(
+          <div key={a.id} className="card" style={{padding:14,borderLeft:`3px solid ${PRIORITY_COLORS[a.priority]||"#888"}`}}>
+            <Badge color={PRIORITY_COLORS[a.priority]||"#888"} label={a.priority||"normal"}/>
+            <div style={{fontSize:13,color:"#333",marginTop:6,lineHeight:1.5}}>{a.text}</div>
+          </div>
+        ))}
+        {bdayS.length>0&&<><div style={{fontSize:14,fontWeight:700,color:"#1A1A2E",marginBottom:12,marginTop:16}}>🎂 Aniversariantes</div>
+        {bdayS.map(m=><div key={m.id} className="card" style={{padding:12,fontSize:13,color:"#333"}}>{m.name} — {m.birthday?.split("-").slice(1).reverse().join("/")}</div>)}</>}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── AGENDA ─────────────────────────────────────────────────────────────────
+function Agenda({user}){
+  const {data:events,loading}=useCollection("events");
+  const [month,setMonth]=useState(new Date().getMonth());
+  const [year,setYear]=useState(new Date().getFullYear());
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const blank={title:"Ensaio",type:"Ensaio",date:todayStr(),dateEnd:"",timeChegada:"",timeApresentacao:"",location:"",mapsUrl:"",vestuario:"",description:"",status:"planejado",recurrence:"none"};
+  const [form,setForm]=useState(blank);
+
+  const monthEvents=events.filter(e=>{if(!e.date)return false;const[y,m]=e.date.split("-");return parseInt(m)-1===month&&parseInt(y)===year;}).sort((a,b)=>a.date>b.date?1:-1);
+
+  function openEdit(ev){setEditing(ev.id);setForm({title:ev.title||"Ensaio",type:ev.type||"Ensaio",date:ev.date||todayStr(),dateEnd:ev.dateEnd||"",timeChegada:ev.timeChegada||"",timeApresentacao:ev.timeApresentacao||"",location:ev.location||"",mapsUrl:ev.mapsUrl||"",vestuario:ev.vestuario||"",description:ev.description||"",status:ev.status||"planejado",recurrence:ev.recurrence||"none"});setShowForm(true);}
+
+  async function save(){
+    if(!form.title||!form.date)return;
+    if(editing){await updateDoc("events",editing,form);}
+    else{
+      if(form.recurrence!=="none"){
+        const dates=[];
+        const d=new Date(form.date+"T12:00:00");
+        const end=new Date();end.setFullYear(end.getFullYear()+1);
+        while(d<=end&&dates.length<52){
+          dates.push(d.toISOString().split("T")[0]);
+          if(form.recurrence==="weekly")d.setDate(d.getDate()+7);
+          else if(form.recurrence==="biweekly")d.setDate(d.getDate()+14);
+          else if(form.recurrence==="monthly")d.setMonth(d.getMonth()+1);
+        }
+        const groupId="group_"+Date.now();
+        for(const dt of dates)await addDoc("events",{...form,date:dt,recurrenceGroupId:groupId});
+      } else await addDoc("events",form);
+    }
+    setShowForm(false);setEditing(null);setForm(blank);
   }
 
-  async function save() {
-    if (!form.title || !form.date) return;
-    if (editing) await updateDoc("events", editing, form);
-    else await addDoc("events", form);
-    setShowForm(false); setEditing(null);
-    setForm({ title:"Ensaio", date:todayStr(), timeChegada:"", timeApresentacao:"", location:"", vestuario:"", description:"", status:"normal", statusNote:"", recurrence:"none" });
+  async function del(ev){
+    if(ev.recurrenceGroupId){
+      const choice=confirm("Excluir só este evento?\n\nOK = só este\nCancelar = este e os próximos");
+      if(choice){await delDoc("events",ev.id);}
+      else{
+        const snap=await db.collection("events").where("recurrenceGroupId","==",ev.recurrenceGroupId).where("date",">=",ev.date).get();
+        for(const d of snap.docs)await d.ref.delete();
+      }
+    } else {if(confirm("Excluir evento?"))await delDoc("events",ev.id);}
   }
 
-  async function del(id) { if (confirm("Excluir evento?")) await deleteDoc("events", id); }
+  const prevMonth=()=>{if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);};
+  const nextMonth=()=>{if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);};
 
-  const prevMonth = () => { if (month===0) { setMonth(11); setYear(y=>y-1); } else setMonth(m=>m-1); };
-  const nextMonth = () => { if (month===11) { setMonth(0); setYear(y=>y+1); } else setMonth(m=>m+1); };
+  const F=(k,t="text",opts)=><div style={{marginBottom:14}}>
+    <label className="label">{k}</label>
+    {opts?<select className="input" value={form[t]} onChange={e=>setForm(f=>({...f,[t]:e.target.value}))}>{opts.map(o=><option key={o.key||o} value={o.key||o}>{o.label||o}</option>)}</select>
+    :<input className="input" type={t==="text"?"text":t} value={form[t]} onChange={e=>setForm(f=>({...f,[t]:e.target.value}))}/>}
+  </div>;
 
-  return <div style={{padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Agenda</div>
-      {user.isAdmin && <button onClick={()=>{setEditing(null);setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Evento</button>}
+  return<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div><div className="page-title">Agenda</div><div className="page-sub">Ensaios, apresentações e eventos</div></div>
+      {user.isAdmin&&<button className="btn-red" onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>+ Novo Evento</button>}
     </div>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-      <button onClick={prevMonth} style={{background:"none",border:`1px solid ${C.borda}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",fontSize:14}}>‹</button>
-      <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:15,color:C.texto}}>{MONTHS_PT[month]} {year}</div>
-      <button onClick={nextMonth} style={{background:"none",border:`1px solid ${C.borda}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",fontSize:14}}>›</button>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <button onClick={prevMonth} style={{background:"#fff",border:"1px solid #E0E0E0",borderRadius:7,padding:"7px 14px",cursor:"pointer",fontSize:16,color:"#666"}}>‹</button>
+      <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:"#1A1A2E"}}>{MONTHS_PT[month]} {year}</div>
+      <button onClick={nextMonth} style={{background:"#fff",border:"1px solid #E0E0E0",borderRadius:7,padding:"7px 14px",cursor:"pointer",fontSize:16,color:"#666"}}>›</button>
     </div>
-    {loading ? <Spinner/> : monthEvents.length===0 ? <EmptyState icon="📅" msg="Nenhum evento neste mês"/> : monthEvents.map(ev => {
-      const st = EVENT_STATUS.find(s=>s.key===ev.status)||EVENT_STATUS[0];
-      return <div key={ev.id} style={CARD} className="fade-in">
+    {loading?<Spinner/>:monthEvents.length===0?<Empty icon="📅" msg="Nenhum evento neste mês"/>:monthEvents.map(ev=>{
+      const st=EVENT_STATUS.find(s=>s.key===ev.status)||{color:"#888",label:ev.status};
+      return<div key={ev.id} className="card fade-in" style={{borderLeft:`4px solid ${st.color}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div style={{flex:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-              <span style={{color:st.color,fontSize:12}}>{st.icon}</span>
-              <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{ev.title}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <Badge color={st.color} label={st.label}/>
+              {ev.type&&ev.type!=="Ensaio"&&<Badge color="#555" label={ev.type}/>}
             </div>
-            <div style={{fontSize:12,color:C.textoSub,marginBottom:4}}>{fmtDate(ev.date)}</div>
-            {ev.timeChegada && <div style={{fontSize:12,color:C.textoSub}}>🕐 Chegada: {ev.timeChegada}{ev.timeApresentacao&&` · Apresentação: ${ev.timeApresentacao}`}</div>}
-            {ev.location && <div style={{fontSize:12,color:C.textoSub,marginTop:2}}>📍 {ev.location}</div>}
-            {ev.vestuario && <div style={{fontSize:12,color:C.textoSub,marginTop:2}}>👗 {ev.vestuario}</div>}
-            {ev.description && <div style={{fontSize:12,color:C.textoSub,marginTop:4,fontStyle:"italic"}}>{ev.description}</div>}
+            <div style={{fontWeight:700,fontSize:15,color:"#1A1A2E",marginBottom:4}}>{ev.title}</div>
+            <div style={{fontSize:13,color:"#888",marginBottom:4}}>{fmtDate(ev.date)}{ev.dateEnd&&ev.dateEnd!==ev.date&&` até ${fmtDate(ev.dateEnd)}`}</div>
+            {ev.timeChegada&&<div style={{fontSize:13,color:"#666"}}>🕐 Chegada: <strong>{ev.timeChegada}</strong>{ev.timeApresentacao&&` · Apresentação: ${ev.timeApresentacao}`}</div>}
+            {ev.location&&<div style={{fontSize:13,color:"#666",marginTop:2}}>📍 {ev.location}{ev.mapsUrl&&<a href={ev.mapsUrl} target="_blank" style={{color:"#7B1020",marginLeft:8,fontSize:12,fontWeight:600}}>Ver no Maps →</a>}</div>}
+            {ev.vestuario&&<div style={{fontSize:13,color:"#666",marginTop:2}}>👗 {ev.vestuario}</div>}
+            {ev.description&&<div style={{fontSize:13,color:"#666",marginTop:4,fontStyle:"italic"}}>{ev.description}</div>}
           </div>
-          {user.isAdmin && <div style={{display:"flex",gap:6,marginLeft:8}}>
-            <button onClick={()=>openEdit(ev)} style={BTN_SM(C.textoSub)}>✎</button>
-            <button onClick={()=>del(ev.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          {user.isAdmin&&<div style={{display:"flex",gap:6,marginLeft:12}}>
+            <button className="btn-sm" onClick={()=>openEdit(ev)}>✎ Editar</button>
+            <button className="btn-sm-red" onClick={()=>del(ev)}>✕</button>
           </div>}
         </div>
       </div>;
     })}
-    {showForm && <Modal title={editing?"Editar Evento":"Novo Evento"} onClose={()=>{setShowForm(false);setEditing(null);}}>
-      {[["Título","title","text"],["Data","date","date"],["Horário de chegada","timeChegada","time"],["Horário de apresentação","timeApresentacao","time"],["Local","location","text"],["Vestuário","vestuario","text"]].map(([l,k,t]) => (
-        <div key={k} style={{marginBottom:12}}>
-          <label style={LS}>{l}</label>
-          <input style={IS} type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
-        </div>
-      ))}
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Status</label>
-        <select style={IS} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-          {EVENT_STATUS.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
+    {showForm&&<Modal title={editing?"Editar Evento":"Novo Evento"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:1}}>{F("Tipo de evento","type",EVENT_TYPES.map(t=>({key:t,label:t})))}</div>
+        <div style={{flex:2}}>{F("Título","title")}</div>
       </div>
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Recorrência</label>
-        <select style={IS} value={form.recurrence} onChange={e=>setForm(f=>({...f,recurrence:e.target.value}))}>
-          {RECURRENCE_OPTIONS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
-        </select>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:1}}>{F("Data de início","date","date")}</div>
+        <div style={{flex:1}}>{F("Data de término","dateEnd","date")}</div>
       </div>
-      <div style={{marginBottom:16}}>
-        <label style={LS}>Observações</label>
-        <textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:1}}>{F("Horário de chegada","timeChegada","time")}</div>
+        <div style={{flex:1}}>{F("Horário de apresentação","timeApresentacao","time")}</div>
       </div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
-        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      {F("Local","location")}
+      {F("Link Google Maps","mapsUrl")}
+      {F("Vestuário","vestuario")}
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:1}}>{F("Status","status",EVENT_STATUS)}</div>
+        {!editing&&<div style={{flex:1}}>{F("Recorrência","recurrence",RECURRENCE)}</div>}
+      </div>
+      <div style={{marginBottom:14}}>
+        <label className="label">Observações</label>
+        <textarea className="input" style={{minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+        <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
       </div>
     </Modal>}
   </div>;
 }
 
-// ── REPERTÓRIO ─────────────────────────────────────────────────────────────────
-function Repertorio({ user }) {
-  const { data: songs, loading } = useCollection("songs");
-  const [selected, setSelected] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", composer:"", categoria:"MPB", curiosidades:"", letra:"", files:{} });
-  const [editing, setEditing] = useState(null);
-  const [search, setSearch] = useState("");
+// ── REPERTÓRIO ─────────────────────────────────────────────────────────────
+function Repertorio({user}){
+  const {data:songs,loading}=useCollection("songs");
+  const [selected,setSelected]=useState(null);
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const blank={title:"",composer:"",categoria:"MPB",curiosidades:"",letra:"",files:{}};
+  const [form,setForm]=useState(blank);
+  const [search,setSearch]=useState("");
+  const letraRef=useRef(null);
 
-  const filtered = songs.filter(s => s.title&&s.title.toLowerCase().includes(search.toLowerCase()));
+  const filtered=songs.filter(s=>s.title&&s.title.toLowerCase().includes(search.toLowerCase()));
 
-  function openEdit(s) {
-    setEditing(s.id);
-    setForm({ title:s.title||"", composer:s.composer||"", categoria:s.categoria||"MPB", curiosidades:s.curiosidades||"", letra:s.letra||"", files:s.files||{} });
-    setShowForm(true);
-  }
+  function openEdit(s){setEditing(s.id);setForm({title:s.title||"",composer:s.composer||"",categoria:s.categoria||"MPB",curiosidades:s.curiosidades||"",letra:s.letra||"",files:s.files||{}});setShowForm(true);}
+  async function save(){if(!form.title)return;if(editing)await updateDoc("songs",editing,form);else await addDoc("songs",form);setShowForm(false);setEditing(null);}
+  async function del(id){if(confirm("Excluir música?")){await delDoc("songs",id);if(selected?.id===id)setSelected(null);}}
 
-  async function save() {
-    if (!form.title) return;
-    if (editing) await updateDoc("songs", editing, form);
-    else await addDoc("songs", form);
-    setShowForm(false); setEditing(null);
-  }
+  function fmt(cmd){document.execCommand(cmd,false,null);if(letraRef.current)setForm(f=>({...f,letra:letraRef.current.innerHTML}));}
 
-  async function del(id) { if (confirm("Excluir música?")) { await deleteDoc("songs", id); if (selected?.id===id) setSelected(null); } }
-
-  if (selected) {
-    const s = songs.find(x=>x.id===selected.id) || selected;
-    return <div style={{padding:16}}>
-      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",color:C.vermelho,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16}}>← Voltar</button>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto,marginBottom:4}}>{s.title}</div>
-      {s.composer && <div style={{fontSize:13,color:C.textoSub,marginBottom:16}}>Compositor: {s.composer}</div>}
-      {s.curiosidades && <div style={{...CARD,background:"#FFF8F8"}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.vermelho,marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Curiosidades</div>
-        <div style={{fontSize:13,color:C.texto,lineHeight:1.6}}>{s.curiosidades}</div>
+  if(selected){
+    const s=songs.find(x=>x.id===selected.id)||selected;
+    return<div>
+      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",color:"#7B1020",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:16,padding:0}}>← Voltar ao repertório</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+        <div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:700,color:"#1A1A2E"}}>{s.title}</div>
+          {s.composer&&<div style={{fontSize:14,color:"#888",marginTop:4}}>Compositor: {s.composer}</div>}
+        </div>
+        {user.isAdmin&&<button className="btn-sm" onClick={()=>openEdit(s)}>✎ Editar</button>}
+      </div>
+      {s.curiosidades&&<div className="card" style={{background:"#FFF8F8",marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#7B1020",marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Curiosidades</div>
+        <div style={{fontSize:14,color:"#333",lineHeight:1.7}}>{s.curiosidades}</div>
       </div>}
-      <div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8}}>Arquivos de ensaio</div>
-      {FILE_FIELDS.map(f => {
-        const url = s.files?.[f.key];
-        return <div key={f.key} style={{...CARD,padding:12}}>
-          <div style={{fontSize:11,color:C.textoSub,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>{f.icon} {f.label}</div>
-          {url ? (f.type==="audio" ? <audio controls src={url} style={{width:"100%"}}/> : <a href={url} target="_blank" style={{color:C.vermelho,fontSize:13}}>Abrir arquivo</a>) : <div style={{fontSize:12,color:C.textoLeve}}>Não disponível</div>}
-        </div>;
-      })}
-      {s.letra && <><div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8,marginTop:8}}>Letra</div>
-      <div style={{...CARD,whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.8,color:C.texto}}>{s.letra}</div></>}
+      <div style={{fontSize:14,fontWeight:700,color:"#1A1A2E",marginBottom:10}}>Arquivos</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+        {FILE_FIELDS.map(f=>{
+          const url=s.files?.[f.key];
+          return<div key={f.key} className="card" style={{padding:14}}>
+            <div style={{fontSize:11,color:"#888",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>{f.icon} {f.label}</div>
+            {url?(f.type==="audio"?<audio controls src={url} style={{width:"100%"}}/>:<a href={url} target="_blank" style={{color:"#7B1020",fontSize:13,fontWeight:600}}>Abrir arquivo →</a>):<div style={{fontSize:12,color:"#ccc"}}>Não disponível</div>}
+          </div>;
+        })}
+      </div>
+      {s.letra&&<><div style={{fontSize:14,fontWeight:700,color:"#1A1A2E",marginBottom:10}}>Letra</div>
+      <div className="card" style={{whiteSpace:"pre-wrap",fontSize:14,lineHeight:1.9,color:"#333"}} dangerouslySetInnerHTML={{__html:s.letra}}/></>}
+      {showForm&&<Modal title="Editar Música" onClose={()=>{setShowForm(false);setEditing(null);}} wide>
+        <div style={{display:"flex",gap:12}}>
+          <div style={{flex:2}}><label className="label">Título</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+          <div style={{flex:1}}><label className="label">Compositor</label><input className="input" value={form.composer} onChange={e=>setForm(f=>({...f,composer:e.target.value}))}/></div>
+          <div style={{flex:1}}><label className="label">Categoria</label><input className="input" value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}/></div>
+        </div>
+        <div style={{marginBottom:14,marginTop:14}}><label className="label">Curiosidades</label><textarea className="input" style={{minHeight:60,resize:"vertical"}} value={form.curiosidades} onChange={e=>setForm(f=>({...f,curiosidades:e.target.value}))}/></div>
+        <div style={{marginBottom:14}}>
+          <label className="label">Letra</label>
+          <div style={{display:"flex",gap:4,marginBottom:6}}>
+            {[["N","bold"],["I","italic"],["S","underline"]].map(([l,c])=><button key={c} onMouseDown={e=>{e.preventDefault();fmt(c);}} style={{padding:"3px 10px",border:"1px solid #ddd",borderRadius:4,cursor:"pointer",fontWeight:l==="N"?"700":"normal",fontStyle:l==="I"?"italic":"normal",textDecoration:l==="S"?"underline":"none",background:"#fff",fontSize:13}}>{l}</button>)}
+          </div>
+          <div ref={letraRef} contentEditable suppressContentEditableWarning onInput={()=>setForm(f=>({...f,letra:letraRef.current.innerHTML}))} style={{minHeight:120,border:"1px solid #E0E0E0",borderRadius:7,padding:"9px 12px",fontSize:13,outline:"none",lineHeight:1.7}} dangerouslySetInnerHTML={{__html:form.letra}}/>
+        </div>
+        <div style={{marginBottom:10,fontWeight:700,fontSize:12,color:"#333",textTransform:"uppercase",letterSpacing:0.8}}>URLs dos arquivos</div>
+        {FILE_FIELDS.map(f=><div key={f.key} style={{marginBottom:10}}><label className="label">{f.icon} {f.label}</label><input className="input" placeholder="URL..." value={form.files?.[f.key]||""} onChange={e=>setForm(ff=>({...ff,files:{...ff.files,[f.key]:e.target.value}}))}/></div>)}
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+          <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
+        </div>
+      </Modal>}
     </div>;
   }
 
-  return <div style={{padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Repertório</div>
-      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({title:"",composer:"",categoria:"MPB",curiosidades:"",letra:"",files:{}});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Música</button>}
+  return<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div><div className="page-title">Repertório</div><div className="page-sub">Músicas, letras e arquivos de ensaio</div></div>
+      {user.isAdmin&&<button className="btn-red" onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>+ Nova Música</button>}
     </div>
-    <input style={{...IS,marginBottom:16}} placeholder="Buscar música..." value={search} onChange={e=>setSearch(e.target.value)}/>
-    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="🎵" msg="Nenhuma música cadastrada"/> : filtered.map(s => (
-      <div key={s.id} style={{...CARD,cursor:"pointer"}} onClick={()=>setSelected(s)} className="fade-in">
+    <input className="input" style={{marginBottom:16}} placeholder="Buscar música..." value={search} onChange={e=>setSearch(e.target.value)}/>
+    {loading?<Spinner/>:filtered.length===0?<Empty icon="🎵" msg="Nenhuma música cadastrada"/>:filtered.map(s=>(
+      <div key={s.id} className="card fade-in" style={{cursor:"pointer"}} onClick={()=>setSelected(s)}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{s.title}</div>
-            {s.composer && <div style={{fontSize:12,color:C.textoSub}}>{s.composer}</div>}
-            {s.categoria && <Badge color={C.vermelho}>{s.categoria}</Badge>}
+            <div style={{fontWeight:700,fontSize:14,color:"#1A1A2E"}}>{s.title}</div>
+            <div style={{fontSize:12,color:"#888",marginTop:2}}>{s.composer}</div>
+            {s.categoria&&<Badge color="#7B1020" label={s.categoria}/>}
           </div>
-          {user.isAdmin && <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:6}}>
-            <button onClick={()=>openEdit(s)} style={BTN_SM(C.textoSub)}>✎</button>
-            <button onClick={()=>del(s.id)} style={BTN_SM(C.vermelho)}>✕</button>
-          </div>}
+          <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:6}}>
+            {user.isAdmin&&<><button className="btn-sm" onClick={()=>openEdit(s)}>✎</button><button className="btn-sm-red" onClick={()=>del(s.id)}>✕</button></>}
+            <span style={{color:"#ccc",fontSize:18,marginLeft:4}}>›</span>
+          </div>
         </div>
       </div>
     ))}
-    {showForm && <Modal title={editing?"Editar Música":"Nova Música"} onClose={()=>{setShowForm(false);setEditing(null);}}>
-      {[["Título","title"],["Compositor","composer"],["Categoria","categoria"]].map(([l,k]) => (
-        <div key={k} style={{marginBottom:12}}>
-          <label style={LS}>{l}</label>
-          <input style={IS} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
-        </div>
-      ))}
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Curiosidades</label>
-        <textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.curiosidades} onChange={e=>setForm(f=>({...f,curiosidades:e.target.value}))}/>
+    {showForm&&<Modal title={editing?"Editar Música":"Nova Música"} onClose={()=>{setShowForm(false);setEditing(null);}} wide>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:2}}><label className="label">Título</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Compositor</label><input className="input" value={form.composer} onChange={e=>setForm(f=>({...f,composer:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Categoria</label><input className="input" value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}/></div>
       </div>
-      <div style={{marginBottom:8,fontWeight:700,fontSize:12,color:C.texto}}>URLs dos arquivos</div>
-      {FILE_FIELDS.map(f => (
-        <div key={f.key} style={{marginBottom:8}}>
-          <label style={LS}>{f.icon} {f.label}</label>
-          <input style={IS} placeholder="URL do arquivo..." value={form.files?.[f.key]||""} onChange={e=>setForm(ff=>({...ff,files:{...ff.files,[f.key]:e.target.value}}))}/>
+      <div style={{marginBottom:14,marginTop:14}}><label className="label">Curiosidades</label><textarea className="input" style={{minHeight:60,resize:"vertical"}} value={form.curiosidades} onChange={e=>setForm(f=>({...f,curiosidades:e.target.value}))}/></div>
+      <div style={{marginBottom:14}}>
+        <label className="label">Letra</label>
+        <div style={{display:"flex",gap:4,marginBottom:6}}>
+          {[["N","bold"],["I","italic"],["S","underline"]].map(([l,c])=><button key={c} onMouseDown={e=>{e.preventDefault();fmt(c);}} style={{padding:"3px 10px",border:"1px solid #ddd",borderRadius:4,cursor:"pointer",fontWeight:l==="N"?"700":"normal",fontStyle:l==="I"?"italic":"normal",textDecoration:l==="S"?"underline":"none",background:"#fff",fontSize:13}}>{l}</button>)}
         </div>
-      ))}
-      <div style={{marginBottom:16}}>
-        <label style={LS}>Letra</label>
-        <textarea style={{...IS,minHeight:120,resize:"vertical"}} value={form.letra} onChange={e=>setForm(f=>({...f,letra:e.target.value}))}/>
+        <div ref={letraRef} contentEditable suppressContentEditableWarning onInput={()=>setForm(f=>({...f,letra:letraRef.current.innerHTML}))} style={{minHeight:120,border:"1px solid #E0E0E0",borderRadius:7,padding:"9px 12px",fontSize:13,outline:"none",lineHeight:1.7}} dangerouslySetInnerHTML={{__html:form.letra}}/>
       </div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
-        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      <div style={{marginBottom:10,fontWeight:700,fontSize:12,color:"#333",textTransform:"uppercase",letterSpacing:0.8}}>URLs dos arquivos</div>
+      {FILE_FIELDS.map(f=><div key={f.key} style={{marginBottom:10}}><label className="label">{f.icon} {f.label}</label><input className="input" placeholder="URL..." value={form.files?.[f.key]||""} onChange={e=>setForm(ff=>({...ff,files:{...ff.files,[f.key]:e.target.value}}))}/></div>)}
+      <div style={{display:"flex",gap:10,marginTop:8}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+        <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
       </div>
     </Modal>}
   </div>;
 }
 
-// ── SALA DE ESTUDOS ────────────────────────────────────────────────────────────
-function SalaEstudos({ user }) {
-  const { data: materials, loading } = useCollection("materials");
-  const [cat, setCat] = useState("todos");
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", category:"tecnica", url:"", description:"" });
-  const [editing, setEditing] = useState(null);
+// ── SALA DE ESTUDOS ────────────────────────────────────────────────────────
+function SalaEstudos({user}){
+  const {data:materials,loading}=useCollection("materials");
+  const [cat,setCat]=useState("todos");
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [form,setForm]=useState({title:"",category:"tecnica",url:"",description:""});
+  const filtered=cat==="todos"?materials:materials.filter(m=>m.category===cat);
 
-  const filtered = cat==="todos" ? materials : materials.filter(m=>m.category===cat);
+  async function save(){if(!form.title)return;if(editing)await updateDoc("materials",editing,form);else await addDoc("materials",form);setShowForm(false);setEditing(null);}
+  async function del(id){if(confirm("Excluir material?"))await delDoc("materials",id);}
 
-  async function save() {
-    if (!form.title) return;
-    if (editing) await updateDoc("materials", editing, form);
-    else await addDoc("materials", form);
-    setShowForm(false); setEditing(null);
-  }
-
-  async function del(id) { if (confirm("Excluir material?")) await deleteDoc("materials", id); }
-
-  return <div style={{padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Sala de Estudos</div>
-      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({title:"",category:"tecnica",url:"",description:""});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Material</button>}
+  return<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div><div className="page-title">Sala de Estudos</div><div className="page-sub">Materiais para estudo e aprimoramento</div></div>
+      {user.isAdmin&&<button className="btn-red" onClick={()=>{setEditing(null);setForm({title:"",category:"tecnica",url:"",description:""});setShowForm(true);}}>+ Material</button>}
     </div>
-    <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:16,paddingBottom:4}}>
-      {[{key:"todos",label:"Todos",color:C.textoSub},...STUDY_CATEGORIES].map(c=>(
-        <button key={c.key} onClick={()=>setCat(c.key)}
-          style={{flexShrink:0,padding:"6px 12px",borderRadius:20,border:`1px solid ${cat===c.key?c.color:C.borda}`,background:cat===c.key?c.color+"22":"#fff",color:cat===c.key?c.color:C.textoSub,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}}>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
+      {[{key:"todos",label:"Todos",color:"#888"},...STUDY_CATS].map(c=>(
+        <button key={c.key} onClick={()=>setCat(c.key)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${cat===c.key?c.color:"#E0E0E0"}`,background:cat===c.key?c.color+"22":"#fff",color:cat===c.key?c.color:"#888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
           {c.label}
         </button>
       ))}
     </div>
-    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="📚" msg="Nenhum material nesta categoria"/> : filtered.map(m => {
-      const cat_info = STUDY_CATEGORIES.find(c=>c.key===m.category);
-      const isYT = m.url&&(m.url.includes("youtube.com")||m.url.includes("youtu.be"));
-      const ytId = isYT ? (m.url.includes("v=") ? m.url.split("v=")[1].split("&")[0] : m.url.split("/").pop()) : null;
-      return <div key={m.id} style={CARD} className="fade-in">
+    {loading?<Spinner/>:filtered.length===0?<Empty icon="📚" msg="Nenhum material"/>:filtered.map(m=>{
+      const ci=STUDY_CATS.find(c=>c.key===m.category);
+      const isYT=m.url&&(m.url.includes("youtube.com")||m.url.includes("youtu.be"));
+      const ytId=isYT?(m.url.includes("v=")?m.url.split("v=")[1].split("&")[0]:m.url.split("/").pop()):null;
+      return<div key={m.id} className="card fade-in">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div>
-            {cat_info && <Badge color={cat_info.color}>{cat_info.label}</Badge>}
-            <div style={{fontWeight:700,fontSize:14,color:C.texto,marginTop:4}}>{m.title}</div>
-            {m.description && <div style={{fontSize:12,color:C.textoSub,marginTop:4}}>{m.description}</div>}
-          </div>
-          {user.isAdmin && <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>{setEditing(m.id);setForm({title:m.title||"",category:m.category||"tecnica",url:m.url||"",description:m.description||""});setShowForm(true);}} style={BTN_SM(C.textoSub)}>✎</button>
-            <button onClick={()=>del(m.id)} style={BTN_SM(C.vermelho)}>✕</button>
-          </div>}
+          <div>{ci&&<Badge color={ci.color} label={ci.label}/>}<div style={{fontWeight:700,fontSize:14,color:"#1A1A2E",marginTop:4}}>{m.title}</div>{m.description&&<div style={{fontSize:12,color:"#888",marginTop:2}}>{m.description}</div>}</div>
+          {user.isAdmin&&<div style={{display:"flex",gap:6}}><button className="btn-sm" onClick={()=>{setEditing(m.id);setForm({title:m.title||"",category:m.category||"tecnica",url:m.url||"",description:m.description||""});setShowForm(true);}}>✎</button><button className="btn-sm-red" onClick={()=>del(m.id)}>✕</button></div>}
         </div>
-        {isYT && ytId ? <div style={{position:"relative",paddingBottom:"56.25%",height:0,overflow:"hidden",borderRadius:8}}>
-          <iframe src={`https://www.youtube.com/embed/${ytId}`} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none",borderRadius:8}} allowFullScreen/>
-        </div> : m.url ? <a href={m.url} target="_blank" style={{color:C.vermelho,fontSize:13,fontWeight:700}}>→ Abrir material</a> : null}
+        {isYT&&ytId?<div style={{position:"relative",paddingBottom:"56.25%",height:0,overflow:"hidden",borderRadius:8}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none",borderRadius:8}} allowFullScreen/></div>:m.url?<a href={m.url} target="_blank" style={{color:"#7B1020",fontSize:13,fontWeight:700}}>→ Abrir material</a>:null}
       </div>;
     })}
-    {showForm && <Modal title={editing?"Editar Material":"Novo Material"} onClose={()=>{setShowForm(false);setEditing(null);}}>
-      <div style={{marginBottom:12}}><label style={LS}>Título</label><input style={IS} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Categoria</label>
-        <select style={IS} value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
-          {STUDY_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
-        </select>
-      </div>
-      <div style={{marginBottom:12}}><label style={LS}>URL (YouTube, Drive, etc)</label><input style={IS} placeholder="https://..." value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}/></div>
-      <div style={{marginBottom:16}}><label style={LS}>Descrição</label><textarea style={{...IS,minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/></div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
-        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+    {showForm&&<Modal title={editing?"Editar Material":"Novo Material"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{marginBottom:14}}><label className="label">Título</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+      <div style={{marginBottom:14}}><label className="label">Categoria</label><select className="input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>{STUDY_CATS.map(c=><option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
+      <div style={{marginBottom:14}}><label className="label">URL</label><input className="input" placeholder="https://..." value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}/></div>
+      <div style={{marginBottom:16}}><label className="label">Descrição</label><textarea className="input" style={{minHeight:80,resize:"vertical"}} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/></div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+        <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
       </div>
     </Modal>}
   </div>;
 }
 
-// ── AVISOS ─────────────────────────────────────────────────────────────────────
-function Avisos({ user }) {
-  const { data: avisos, loading } = useCollection("avisos");
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ text:"", priority:"normal" });
-  const [editing, setEditing] = useState(null);
+// ── AVISOS ─────────────────────────────────────────────────────────────────
+function Avisos({user}){
+  const {data:avisos,loading}=useCollection("avisos");
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [form,setForm]=useState({text:"",priority:"normal"});
+  const textRef=useRef(null);
+  function fmt(cmd){document.execCommand(cmd,false,null);if(textRef.current)setForm(f=>({...f,text:textRef.current.innerHTML}));}
+  async function save(){if(!form.text)return;if(editing)await updateDoc("avisos",editing,form);else await addDoc("avisos",form);setShowForm(false);setEditing(null);}
+  async function del(id){if(confirm("Excluir aviso?"))await delDoc("avisos",id);}
 
-  async function save() {
-    if (!form.text) return;
-    if (editing) await updateDoc("avisos", editing, form);
-    else await addDoc("avisos", form);
-    setShowForm(false); setEditing(null);
-  }
-
-  async function del(id) { if (confirm("Excluir aviso?")) await deleteDoc("avisos", id); }
-
-  const priorityColors = { urgente:"#B41020", importante:"#E65100", normal:"#1B5E20" };
-
-  return <div style={{padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Avisos</div>
-      {user.isAdmin && <button onClick={()=>{setEditing(null);setForm({text:"",priority:"normal"});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Aviso</button>}
+  return<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div><div className="page-title">Avisos</div><div className="page-sub">Comunicados para o coral</div></div>
+      {user.isAdmin&&<button className="btn-red" onClick={()=>{setEditing(null);setForm({text:"",priority:"normal"});setShowForm(true);}}>+ Aviso</button>}
     </div>
-    {loading ? <Spinner/> : avisos.length===0 ? <EmptyState icon="📢" msg="Nenhum aviso no momento"/> : avisos.map(a => (
-      <div key={a.id} style={{...CARD,borderLeft:`4px solid ${priorityColors[a.priority]||C.verde}`}} className="fade-in">
+    {loading?<Spinner/>:avisos.length===0?<Empty icon="📢" msg="Nenhum aviso"/>:avisos.map(a=>(
+      <div key={a.id} className="card fade-in" style={{borderLeft:`4px solid ${PRIORITY_COLORS[a.priority]||"#888"}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div style={{flex:1}}>
-            <Badge color={priorityColors[a.priority]||C.verde}>{a.priority||"normal"}</Badge>
-            <div style={{fontSize:14,color:C.texto,marginTop:8,lineHeight:1.6}}>{a.text}</div>
-          </div>
-          {user.isAdmin && <div style={{display:"flex",gap:6,marginLeft:8}}>
-            <button onClick={()=>{setEditing(a.id);setForm({text:a.text||"",priority:a.priority||"normal"});setShowForm(true);}} style={BTN_SM(C.textoSub)}>✎</button>
-            <button onClick={()=>del(a.id)} style={BTN_SM(C.vermelho)}>✕</button>
+          <div style={{flex:1}}><Badge color={PRIORITY_COLORS[a.priority]||"#888"} label={a.priority||"normal"}/><div style={{fontSize:14,color:"#333",marginTop:8,lineHeight:1.6}} dangerouslySetInnerHTML={{__html:a.text}}/></div>
+          {user.isAdmin&&<div style={{display:"flex",gap:6,marginLeft:12}}>
+            <button className="btn-sm" onClick={()=>{setEditing(a.id);setForm({text:a.text||"",priority:a.priority||"normal"});setShowForm(true);}}>✎</button>
+            <button className="btn-sm-red" onClick={()=>del(a.id)}>✕</button>
           </div>}
         </div>
       </div>
     ))}
-    {showForm && <Modal title={editing?"Editar Aviso":"Novo Aviso"} onClose={()=>{setShowForm(false);setEditing(null);}}>
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Prioridade</label>
-        <select style={IS} value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>
-          <option value="normal">Normal</option>
-          <option value="importante">Importante</option>
-          <option value="urgente">Urgente</option>
-        </select>
+    {showForm&&<Modal title={editing?"Editar Aviso":"Novo Aviso"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{marginBottom:14}}><label className="label">Prioridade</label><select className="input" value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}><option value="normal">Normal</option><option value="importante">Importante</option><option value="urgente">Urgente</option></select></div>
+      <div style={{marginBottom:16}}>
+        <label className="label">Mensagem</label>
+        <div style={{display:"flex",gap:4,marginBottom:6}}>{[["N","bold"],["I","italic"],["S","underline"]].map(([l,c])=><button key={c} onMouseDown={e=>{e.preventDefault();fmt(c);}} style={{padding:"3px 10px",border:"1px solid #ddd",borderRadius:4,cursor:"pointer",fontWeight:l==="N"?"700":"normal",fontStyle:l==="I"?"italic":"normal",textDecoration:l==="S"?"underline":"none",background:"#fff",fontSize:13}}>{l}</button>)}</div>
+        <div ref={textRef} contentEditable suppressContentEditableWarning onInput={()=>setForm(f=>({...f,text:textRef.current.innerHTML}))} style={{minHeight:120,border:"1px solid #E0E0E0",borderRadius:7,padding:"9px 12px",fontSize:13,outline:"none",lineHeight:1.7}} dangerouslySetInnerHTML={{__html:form.text}}/>
       </div>
-      <div style={{marginBottom:16}}><label style={LS}>Mensagem</label><textarea style={{...IS,minHeight:120,resize:"vertical"}} value={form.text} onChange={e=>setForm(f=>({...f,text:e.target.value}))}/></div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
-        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+        <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
       </div>
     </Modal>}
   </div>;
 }
 
-// ── INTEGRANTES ────────────────────────────────────────────────────────────────
-function Integrantes({ user }) {
-  const { data: members, loading } = useCollection("members");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [filter, setFilter] = useState("todos");
-  const [form, setForm] = useState({ name:"", voice:"soprano", birthday:"", whatsapp:"", active:true, startDate:todayStr(), endDate:"", notes:"" });
+// ── INTEGRANTES ────────────────────────────────────────────────────────────
+function Integrantes(){
+  const {data:members,loading}=useCollection("members");
+  const [filter,setFilter]=useState("ativos");
+  const [showForm,setShowForm]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const blank={name:"",voice:"soprano",birthday:"",whatsapp:"",email:"",active:true,startDate:todayStr(),endDate:"",notes:""};
+  const [form,setForm]=useState(blank);
+  const filtered=members.filter(m=>filter==="todos"?true:filter==="ativos"?m.active:!m.active);
 
-  const filtered = members.filter(m => filter==="todos" ? true : filter==="ativos" ? m.active : !m.active);
+  function openEdit(m){setEditing(m.id);setForm({name:m.name||"",voice:m.voice||"soprano",birthday:m.birthday||"",whatsapp:m.whatsapp||"",email:m.email||"",active:m.active!==false,startDate:m.startDate||todayStr(),endDate:m.endDate||"",notes:m.notes||""});setShowForm(true);}
+  async function save(){if(!form.name)return;if(editing)await updateDoc("members",editing,form);else await addDoc("members",form);setShowForm(false);setEditing(null);}
+  async function del(id){if(confirm("Excluir integrante?"))await delDoc("members",id);}
 
-  function openEdit(m) {
-    setEditing(m.id);
-    setForm({ name:m.name||"", voice:m.voice||"soprano", birthday:m.birthday||"", whatsapp:m.whatsapp||"", active:m.active!==false, startDate:m.startDate||todayStr(), endDate:m.endDate||"", notes:m.notes||"" });
-    setShowForm(true);
-  }
+  const byVoice=Object.entries(VOICE_LABELS).map(([k,v])=>({key:k,label:v,members:filtered.filter(m=>m.voice===k)})).filter(g=>g.members.length>0);
 
-  async function save() {
-    if (!form.name) return;
-    if (editing) await updateDoc("members", editing, form);
-    else await addDoc("members", form);
-    setShowForm(false); setEditing(null);
-  }
-
-  async function del(id) { if (confirm("Excluir integrante?")) await deleteDoc("members", id); }
-
-  return <div style={{padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.texto}}>Integrantes</div>
-      <button onClick={()=>{setEditing(null);setForm({name:"",voice:"soprano",birthday:"",whatsapp:"",active:true,startDate:todayStr(),endDate:"",notes:""});setShowForm(true);}} style={{background:C.vermelho,color:"#fff",border:"none",borderRadius:6,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Integrante</button>
+  return<div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div><div className="page-title">Integrantes</div><div className="page-sub">{members.filter(m=>m.active).length} ativos · {members.length} total</div></div>
+      <button className="btn-red" onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>+ Integrante</button>
     </div>
-    <div style={{display:"flex",gap:8,marginBottom:16}}>
-      {["todos","ativos","inativos"].map(f=>(
-        <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${filter===f?C.vermelho:C.borda}`,background:filter===f?C.vermelho+"22":"#fff",color:filter===f?C.vermelho:C.textoSub,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}>
-          {f}
-        </button>
+    <div style={{display:"flex",gap:8,marginBottom:20}}>
+      {["ativos","inativos","todos"].map(f=>(
+        <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${filter===f?"#7B1020":"#E0E0E0"}`,background:filter===f?"#7B102022":"#fff",color:filter===f?"#7B1020":"#888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}>{f}</button>
       ))}
     </div>
-    {loading ? <Spinner/> : filtered.length===0 ? <EmptyState icon="👥" msg="Nenhum integrante encontrado"/> : filtered.map(m => (
-      <div key={m.id} style={CARD} className="fade-in">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontWeight:700,fontSize:14,color:C.texto}}>{m.name}</div>
-            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-              <Badge color={VOICE_COLORS[m.voice]||C.textoSub}>{VOICE_LABELS[m.voice]||m.voice}</Badge>
-              <Badge color={m.active?C.verde:C.textoSub}>{m.active?"Ativo":"Inativo"}</Badge>
+    {loading?<Spinner/>:byVoice.length===0?<Empty icon="👥" msg="Nenhum integrante"/>:byVoice.map(g=>(
+      <div key={g.key} style={{marginBottom:20}}>
+        <div style={{fontSize:12,fontWeight:700,color:VOICE_COLORS[g.key],textTransform:"uppercase",letterSpacing:1,marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:VOICE_COLORS[g.key]}}/>
+          {g.label} ({g.members.length})
+        </div>
+        {g.members.map(m=>(
+          <div key={m.id} className="card fade-in" style={{padding:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:"#1A1A2E"}}>{m.name}</div>
+                <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
+                  <Badge color={VOICE_COLORS[m.voice]||"#888"} label={VOICE_LABELS[m.voice]||m.voice}/>
+                  <Badge color={m.active?"#1B5E20":"#888"} label={m.active?"Ativo":"Inativo"}/>
+                  {m.birthday&&<span style={{fontSize:12,color:"#888"}}>🎂 {fmtShort(m.birthday)}</span>}
+                  {m.whatsapp&&<span style={{fontSize:12,color:"#888"}}>📱 {m.whatsapp}</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn-sm" onClick={()=>openEdit(m)}>✎</button>
+                <button className="btn-sm-red" onClick={()=>del(m.id)}>✕</button>
+              </div>
             </div>
-            {m.birthday && <div style={{fontSize:12,color:C.textoSub,marginTop:4}}>🎂 {fmtDate(m.birthday)}</div>}
-            {m.whatsapp && <div style={{fontSize:12,color:C.textoSub}}>📱 {m.whatsapp}</div>}
           </div>
-          <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>openEdit(m)} style={BTN_SM(C.textoSub)}>✎</button>
-            <button onClick={()=>del(m.id)} style={BTN_SM(C.vermelho)}>✕</button>
-          </div>
-        </div>
+        ))}
       </div>
     ))}
-    {showForm && <Modal title={editing?"Editar Integrante":"Novo Integrante"} onClose={()=>{setShowForm(false);setEditing(null);}}>
-      <div style={{marginBottom:12}}><label style={LS}>Nome completo</label><input style={IS} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Naipe</label>
-        <select style={IS} value={form.voice} onChange={e=>setForm(f=>({...f,voice:e.target.value}))}>
-          {Object.entries(VOICE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-        </select>
+    {showForm&&<Modal title={editing?"Editar Integrante":"Novo Integrante"} onClose={()=>{setShowForm(false);setEditing(null);}}>
+      <div style={{display:"flex",gap:12}}>
+        <div style={{flex:2}}><label className="label">Nome completo</label><input className="input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Naipe</label><select className="input" value={form.voice} onChange={e=>setForm(f=>({...f,voice:e.target.value}))}>{Object.entries(VOICE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
       </div>
-      <div style={{marginBottom:12}}><label style={LS}>Data de nascimento</label><input type="date" style={IS} value={form.birthday} onChange={e=>setForm(f=>({...f,birthday:e.target.value}))}/></div>
-      <div style={{marginBottom:12}}><label style={LS}>WhatsApp</label><input style={IS} value={form.whatsapp} onChange={e=>setForm(f=>({...f,whatsapp:e.target.value}))}/></div>
-      <div style={{marginBottom:12}}><label style={LS}>Data de ingresso</label><input type="date" style={IS} value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}/></div>
-      <div style={{marginBottom:12}}>
-        <label style={LS}>Status</label>
-        <select style={IS} value={form.active?"ativo":"inativo"} onChange={e=>setForm(f=>({...f,active:e.target.value==="ativo"}))}>
-          <option value="ativo">Ativo</option>
-          <option value="inativo">Inativo</option>
-        </select>
+      <div style={{display:"flex",gap:12,marginTop:14}}>
+        <div style={{flex:1}}><label className="label">Nascimento</label><input type="date" className="input" value={form.birthday} onChange={e=>setForm(f=>({...f,birthday:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Ingresso</label><input type="date" className="input" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Saída</label><input type="date" className="input" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div>
       </div>
-      <div style={{marginBottom:16}}><label style={LS}>Observações</label><textarea style={{...IS,minHeight:60,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{...BTN("#f0f0f0",C.texto),flex:1}}>Cancelar</button>
-        <button onClick={save} style={{...BTN(C.vermelho),flex:1}}>Salvar</button>
+      <div style={{display:"flex",gap:12,marginTop:14}}>
+        <div style={{flex:1}}><label className="label">WhatsApp</label><input className="input" value={form.whatsapp} onChange={e=>setForm(f=>({...f,whatsapp:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">E-mail</label><input className="input" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/></div>
+        <div style={{flex:1}}><label className="label">Status</label><select className="input" value={form.active?"ativo":"inativo"} onChange={e=>setForm(f=>({...f,active:e.target.value==="ativo"}))}><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+      </div>
+      <div style={{marginTop:14,marginBottom:16}}><label className="label">Observações</label><textarea className="input" style={{minHeight:60,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>{setShowForm(false);setEditing(null);}} style={{flex:1,padding:"10px",borderRadius:7,border:"1px solid #E0E0E0",background:"#f5f5f5",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13}}>Cancelar</button>
+        <button className="btn-red" style={{flex:2}} onClick={save}>Salvar</button>
       </div>
     </Modal>}
   </div>;
 }
 
-// ── PAINEL ADMIN ────────────────────────────────────────────────────────────────
-function Painel({ user }) {
-  const { data: members } = useCollection("members");
-  const { data: events } = useCollection("events");
-  const { data: songs } = useCollection("songs");
-  const { data: avisos } = useCollection("avisos");
-
-  const today = todayStr();
-  const ativos = members.filter(m=>m.active);
-  const proxEventos = events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1).slice(0,3);
-  const currentMonth = new Date().getMonth()+1;
-  const aniversarios = members.filter(m=>m.active&&m.birthday&&parseInt(m.birthday.split("-")[1])===currentMonth);
-
-  return <div style={{padding:16}}>
-    <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.texto,marginBottom:20}}>Painel</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-      {[["👥","Integrantes",ativos.length,"ativos"],["🎵","Músicas",songs.length,"no repertório"],["📅","Eventos",events.length,"cadastrados"],["🎂","Aniversários",aniversarios.length,"este mês"]].map(([icon,label,val,sub])=>(
-        <div key={label} style={{...CARD,textAlign:"center",padding:16}}>
-          <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
-          <div style={{fontSize:24,fontWeight:700,color:C.vermelho}}>{val}</div>
-          <div style={{fontSize:11,color:C.textoSub,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8}}>{sub}</div>
+// ── PERFIL DO CORISTA ──────────────────────────────────────────────────────
+function Perfil({user}){
+  const {data:members}=useCollection("members");
+  const member=members.find(m=>m.id===user.id);
+  if(!member)return<Empty icon="👤" msg="Perfil não encontrado"/>;
+  return<div>
+    <div className="page-title">Meu Perfil</div>
+    <div className="page-sub">Suas informações no coral</div>
+    <div className="card" style={{maxWidth:480}}>
+      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
+        <div style={{width:56,height:56,borderRadius:"50%",background:VOICE_COLORS[member.voice]||"#7B1020",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:22,fontWeight:700}}>{member.name?.[0]}</div>
+        <div>
+          <div style={{fontWeight:700,fontSize:18,color:"#1A1A2E"}}>{member.name}</div>
+          <Badge color={VOICE_COLORS[member.voice]||"#888"} label={VOICE_LABELS[member.voice]||member.voice}/>
         </div>
-      ))}
+      </div>
+      {[["🎂 Nascimento",fmtDate(member.birthday)],["📱 WhatsApp",member.whatsapp],["✉️ E-mail",member.email],["📅 Ingresso",fmtDate(member.startDate)],["📝 Observações",member.notes]].map(([l,v])=>v?<div key={l} style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #f0f0f0"}}>
+        <div style={{fontSize:11,color:"#888",fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>{l}</div>
+        <div style={{fontSize:14,color:"#333"}}>{v}</div>
+      </div>:null)}
     </div>
-    {aniversarios.length>0 && <div style={{...CARD,background:"#FFF8F8",marginBottom:16}}>
-      <div style={{fontSize:12,fontWeight:700,color:C.vermelho,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>🎂 Aniversariantes do mês</div>
-      {aniversarios.map(m=><div key={m.id} style={{fontSize:13,color:C.texto,marginBottom:4}}>{m.name} — {m.birthday?.split("-").slice(1).reverse().join("/")}</div>)}
-    </div>}
-    <div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8}}>Próximos eventos</div>
-    {proxEventos.length===0 ? <EmptyState icon="📅" msg="Nenhum evento próximo"/> : proxEventos.map(e=>(
-      <div key={e.id} style={{...CARD,padding:12}}>
-        <div style={{fontWeight:700,fontSize:13,color:C.texto}}>{e.title}</div>
-        <div style={{fontSize:12,color:C.textoSub}}>{fmtDate(e.date)}{e.timeChegada&&` · ${e.timeChegada}`}</div>
-      </div>
-    ))}
-    {avisos.length>0 && <><div style={{fontSize:13,fontWeight:700,color:C.texto,marginBottom:8,marginTop:8}}>Avisos recentes</div>
-    {avisos.slice(0,2).map(a=>(
-      <div key={a.id} style={{...CARD,padding:12,borderLeft:`3px solid #B41020`}}>
-        <div style={{fontSize:13,color:C.texto}}>{a.text}</div>
-      </div>
-    ))}</>}
   </div>;
 }
 
-// ── APP PRINCIPAL ──────────────────────────────────────────────────────────────
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(0);
-  const { data: members, loading: loadingMembers } = useCollection("members");
+// ── PLACEHOLDER PAGES ──────────────────────────────────────────────────────
+function ComingSoon({title,icon}){
+  return<div>
+    <div className="page-title">{title}</div>
+    <div style={{textAlign:"center",padding:60,color:"#aaa"}}>
+      <div style={{fontSize:48,marginBottom:12}}>{icon}</div>
+      <div style={{fontSize:15,fontWeight:600,color:"#888",marginBottom:4}}>Em desenvolvimento</div>
+      <div style={{fontSize:13}}>Esta funcionalidade será adicionada em breve.</div>
+    </div>
+  </div>;
+}
 
-  useEffect(() => {
-    const saved = localStorage.getItem("cf_user");
-    if (saved) { try { setUser(JSON.parse(saved)); } catch {} }
+// ── APP ────────────────────────────────────────────────────────────────────
+function App(){
+  const [user,setUser]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [tab,setTab]=useState("painel");
+  const {data:members,loading:lm}=useCollection("members");
+
+  useEffect(()=>{
+    const s=localStorage.getItem("cf_user");
+    if(s){try{const u=JSON.parse(s);setUser(u);setTab(u.isAdmin?"painel":"agenda");}catch{}}
     setLoading(false);
-  }, []);
+  },[]);
 
-  if (loading || loadingMembers) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:12,color:C.textoSub}}>
-    <div style={{width:40,height:40,border:`3px solid ${C.vermelho}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-    <div style={{fontFamily:"sans-serif",fontSize:14}}>Carregando...</div>
+  if(loading||lm)return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:12,color:"#aaa"}}>
+    <div style={{width:36,height:36,border:"3px solid #7B1020",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+    <div style={{fontSize:14}}>Carregando...</div>
   </div>;
 
-  if (!user) return <Login members={members} onLogin={setUser}/>;
+  if(!user)return<Login members={members} onLogin={u=>{setUser(u);setTab(u.isAdmin?"painel":"agenda");}}/>;
 
-  const isAdmin = user.isAdmin;
-  const tabs = isAdmin
-    ? [{label:"Painel",icon:"📊"},{label:"Agenda",icon:"📅"},{label:"Músicas",icon:"🎵"},{label:"Estudos",icon:"📚"},{label:"Avisos",icon:"📢"},{label:"Equipe",icon:"👥"}]
-    : [{label:"Agenda",icon:"📅"},{label:"Músicas",icon:"🎵"},{label:"Estudos",icon:"📚"},{label:"Avisos",icon:"📢"}];
+  const pages = {
+    painel: <Painel/>,
+    agenda: <Agenda user={user}/>,
+    repertorio: <Repertorio user={user}/>,
+    estudos: <SalaEstudos user={user}/>,
+    avisos: <Avisos user={user}/>,
+    integrantes: <Integrantes/>,
+    frequencia: <ComingSoon title="Frequência" icon="✅"/>,
+    relatorios: <ComingSoon title="Relatórios" icon="📈"/>,
+    declaracao: <ComingSoon title="Declaração Digital" icon="📋"/>,
+    apresentacao: <ComingSoon title="Apresentação" icon="🎤"/>,
+    perfil: <Perfil user={user}/>,
+  };
 
-  const pages = isAdmin
-    ? [<Painel user={user}/>, <Agenda user={user}/>, <Repertorio user={user}/>, <SalaEstudos user={user}/>, <Avisos user={user}/>, <Integrantes user={user}/>]
-    : [<Agenda user={user}/>, <Repertorio user={user}/>, <SalaEstudos user={user}/>, <Avisos user={user}/>];
-
-  return <div style={{minHeight:"100vh",background:C.fundo,display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto",boxShadow:"0 0 20px rgba(0,0,0,0.08)"}}>
-    <div style={{background:C.vermelho,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100}}>
-      <div>
-        <div style={{fontFamily:"'Playfair Display',serif",color:"#fff",fontSize:17,fontWeight:700}}>Coral Flamboyant</div>
-        <div style={{color:"rgba(255,255,255,0.7)",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Olá, {user.name.split(" ")[0]}{isAdmin?" · Admin":""}</div>
-      </div>
-      <button onClick={()=>{localStorage.removeItem("cf_user");setUser(null);setTab(0);}} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.4)",color:"#fff",borderRadius:4,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit",textTransform:"uppercase",letterSpacing:0.8}}>Sair</button>
-    </div>
-    <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-      {pages[tab]}
-    </div>
-    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#fff",borderTop:`1px solid ${C.borda}`,display:"flex",zIndex:100}}>
-      {tabs.map((t,i)=>(
-        <button key={i} className="tab-btn" onClick={()=>setTab(i)} style={{color:tab===i?C.vermelho:C.textoLeve,borderTop:`2px solid ${tab===i?C.vermelho:"transparent"}`}}>
-          <span style={{fontSize:18}}>{t.icon}</span>
-          {t.label}
-        </button>
-      ))}
+  return<div style={{display:"flex",minHeight:"100vh"}}>
+    <Sidebar user={user} tab={tab} setTab={setTab}/>
+    <div className="main-content">
+      {pages[tab]||<Empty icon="🔍" msg="Página não encontrada"/>}
     </div>
   </div>;
 }
