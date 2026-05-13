@@ -1071,6 +1071,224 @@ function Avisos({ config, isAdmin }) {
 }
 
 
+
+// ── MÚSICAS ───────────────────────────────────────────────────────────────────
+const CATEGORIAS_MUSICA = ["MPB","Natal","Regionais","Sacro","Clássico","Popular","Infantil","Internacional","Outro"];
+const CAT_COLORS = { MPB:"#2E7D32", Natal:"#1565C0", Regionais:"#E65100", Sacro:"#7B1FA2", Clássico:"#4527A0", Popular:"#00838F", Infantil:"#F57C00", Internacional:"#1B5E20", Outro:"#616161" };
+
+function ModalMusica({ musica, onClose, config }) {
+    const cor = config.corPrimaria||COR;
+    const vazio = { title:"", categoria:"MPB", compositor:"", partitura:"", audioOriginal:"", audioArranjo:"", playback:"", soprano:"", mezzoSoprano:"", contralto:"", tenor:"", baritono:"", baixo:"", letra:"", notes:"" };
+    const [form, setForm]         = useState(musica?{...vazio,...musica}:vazio);
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro]         = useState("");
+    const [novaCategoria, setNovaCategoria] = useState("");
+    const [showNovaCateg, setShowNovaCateg] = useState(false);
+    const [categorias, setCategorias]       = useState(CATEGORIAS_MUSICA);
+
+    async function salvar() {
+        if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
+        setSalvando(true);
+        const d = { title:form.title, categoria:form.categoria, compositor:form.compositor||"", partitura:form.partitura||"", audioOriginal:form.audioOriginal||"", audioArranjo:form.audioArranjo||"", playback:form.playback||"", soprano:form.soprano||"", mezzoSoprano:form.mezzoSoprano||"", contralto:form.contralto||"", tenor:form.tenor||"", baritono:form.baritono||"", baixo:form.baixo||"", letra:form.letra||"", notes:form.notes||"" };
+        if (musica) {
+            await db.collection("songs").doc(musica.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        } else {
+            await db.collection("songs").add({...d, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            // Aviso automático
+            await db.collection("avisos").add({ title:`🎵 Nova música: ${form.title}`, text:`"${form.title}"${form.compositor?" de "+form.compositor:""} foi adicionada ao repertório na categoria ${form.categoria}.`, tipo:"auto_musica", prioridade:"Normal", createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        setSalvando(false);
+        onClose();
+    }
+
+    async function excluir() {
+        if (!window.confirm("Excluir esta música do repertório?")) return;
+        await db.collection("songs").doc(musica.id).delete();
+        onClose();
+    }
+
+    const inp  = { width:"100%", padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl  = { display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 };
+    const g2   = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 };
+    const sec  = { fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:10, marginTop:6 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#FAFAFA", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:640, maxHeight:"93vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>{musica?"Editar Música":"Adicionar Música ao Repertório"}</div>
+                    <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="x" size={16} color="#666" />
+                    </button>
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Título *</label>
+                    <input style={{ ...inp, borderColor:erro&&!form.title?cor:"#E8E0E0" }} value={form.title} onChange={e=>{setForm(f=>({...f,title:e.target.value}));setErro("");}} autoFocus />
+                    {erro && <div style={{ fontSize:12, color:cor, marginTop:4 }}>{erro}</div>}
+                </div>
+
+                <div style={g2}>
+                    <div>
+                        <label style={lbl}>Categoria *</label>
+                        <div style={{ display:"flex", gap:6 }}>
+                            <select style={{ ...inp, flex:1 }} value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
+                                {categorias.map(c=><option key={c}>{c}</option>)}
+                            </select>
+                            <button onClick={()=>setShowNovaCateg(v=>!v)} title="Nova categoria"
+                                style={{ width:36, height:38, background:cor+"15", border:`1px solid ${cor}33`, borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                                <Icon name="plus" size={14} color={cor} />
+                            </button>
+                        </div>
+                        {showNovaCateg && <div style={{ display:"flex", gap:6, marginTop:6 }}>
+                            <input style={{ ...inp, flex:1 }} value={novaCategoria} onChange={e=>setNovaCategoria(e.target.value)} placeholder="Nome da categoria" />
+                            <button onClick={()=>{ if(novaCategoria.trim()){setCategorias(c=>[...c,novaCategoria.trim()]);setForm(f=>({...f,categoria:novaCategoria.trim()}));setNovaCategoria("");setShowNovaCateg(false);}}}
+                                style={{ padding:"0 12px", background:cor, color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700 }}>Criar</button>
+                        </div>}
+                    </div>
+                    <div>
+                        <label style={lbl}>Compositor</label>
+                        <input style={inp} value={form.compositor||""} onChange={e=>setForm(f=>({...f,compositor:e.target.value}))} />
+                    </div>
+                </div>
+
+                <div style={sec}>Materiais (links Google Drive ou URL direta)</div>
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>🎼 Partitura (PDF)</label>
+                    <input style={inp} value={form.partitura||""} onChange={e=>setForm(f=>({...f,partitura:e.target.value}))} placeholder="https://drive.google.com/file/d/..." />
+                </div>
+                <div style={g2}>
+                    <div><label style={lbl}>🎵 Áudio Original</label><input style={inp} value={form.audioOriginal||""} onChange={e=>setForm(f=>({...f,audioOriginal:e.target.value}))} placeholder="Drive ou YouTube (https://...)" /></div>
+                    <div><label style={lbl}>🎵 Áudio/Arranjo</label><input style={inp} value={form.audioArranjo||""} onChange={e=>setForm(f=>({...f,audioArranjo:e.target.value}))} placeholder="Drive ou YouTube (https://...)" /></div>
+                </div>
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>🎧 Playback</label>
+                    <input style={inp} value={form.playback||""} onChange={e=>setForm(f=>({...f,playback:e.target.value}))} placeholder="Drive ou YouTube (https://...)" />
+                </div>
+
+                <div style={sec}>Áudios por naipe</div>
+                <div style={g2}>
+                    <div><label style={lbl}>Soprano</label><input style={inp} value={form.soprano||""} onChange={e=>setForm(f=>({...f,soprano:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                    <div><label style={lbl}>Mezzo-soprano</label><input style={inp} value={form.mezzoSoprano||""} onChange={e=>setForm(f=>({...f,mezzoSoprano:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                </div>
+                <div style={g2}>
+                    <div><label style={lbl}>Contralto</label><input style={inp} value={form.contralto||""} onChange={e=>setForm(f=>({...f,contralto:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                    <div><label style={lbl}>Tenor</label><input style={inp} value={form.tenor||""} onChange={e=>setForm(f=>({...f,tenor:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                </div>
+                <div style={g2}>
+                    <div><label style={lbl}>Barítono</label><input style={inp} value={form.baritono||""} onChange={e=>setForm(f=>({...f,baritono:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                    <div><label style={lbl}>Baixo</label><input style={inp} value={form.baixo||""} onChange={e=>setForm(f=>({...f,baixo:e.target.value}))} placeholder="https://drive.google.com/..." /></div>
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Letra</label>
+                    <textarea style={{ ...inp, minHeight:100, resize:"vertical" }} value={form.letra||""} onChange={e=>setForm(f=>({...f,letra:e.target.value}))} />
+                </div>
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Observações</label>
+                    <textarea style={{ ...inp, minHeight:70, resize:"vertical" }} value={form.notes||""} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} />
+                </div>
+
+                <div style={{ display:"flex", gap:10 }}>
+                    {musica && <button onClick={excluir} style={{ padding:"12px 16px", background:"#FFF0F0", color:"#B41020", border:"1px solid #F5DADA", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Excluir</button>}
+                    <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+                    <button onClick={salvar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                        {salvando?"Salvando...":(musica?"Salvar":"Adicionar")}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Repertorio({ config, isAdmin }) {
+    const { data:songs, loading } = useCollection("songs");
+    const [busca, setBusca]       = useState("");
+    const [filtro, setFiltro]     = useState("Todas as Categorias");
+    const [modal, setModal]       = useState(null);
+    const cor = config.corPrimaria||COR;
+
+    if (loading) return <Spinner />;
+
+    const categorias = ["Todas as Categorias", ...Array.from(new Set(songs.map(s=>s.categoria).filter(Boolean))).sort()];
+
+    const filtradas = songs.filter(s => {
+        const q  = busca.toLowerCase();
+        const ok = !busca || s.title.toLowerCase().includes(q) || (s.compositor||"").toLowerCase().includes(q) || (s.categoria||"").toLowerCase().includes(q);
+        const of = filtro==="Todas as Categorias" || s.categoria===filtro;
+        return ok && of;
+    });
+
+    function MaterialBadge({ label, icon, url }) {
+        if (!url) return null;
+        return (
+            <a href={url} target="_blank" rel="noreferrer"
+                style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, textDecoration:"none", marginRight:4, marginBottom:4 }}>
+                <span style={{ fontSize:12 }}>{icon}</span> {label}
+            </a>
+        );
+    }
+
+    function temNaipes(s) { return s.soprano||s.mezzoSoprano||s.contralto||s.tenor||s.baritono||s.baixo; }
+
+    return (
+        <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Repertório</div>
+                {isAdmin && <button onClick={()=>setModal("novo")}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:cor, border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
+                    <Icon name="plus" size={14} color="#fff" /> Adicionar Música
+                </button>}
+            </div>
+
+            {/* Busca + filtro */}
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"12px 16px", marginBottom:20, display:"flex", gap:12, alignItems:"center", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                <Icon name="search" size={16} color="#AAA" />
+                <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar músicas..."
+                    style={{ flex:1, border:"none", outline:"none", fontSize:14, fontFamily:"inherit", color:"#1A1D23", background:"none" }} />
+                <select value={filtro} onChange={e=>setFiltro(e.target.value)}
+                    style={{ border:"1px solid #EEE8E8", borderRadius:8, padding:"7px 12px", fontSize:13, fontFamily:"inherit", color:"#1A1D23", outline:"none", background:"#fff", cursor:"pointer" }}>
+                    {categorias.map(c=><option key={c}>{c}</option>)}
+                </select>
+            </div>
+
+            {/* Grid de cards */}
+            {filtradas.length === 0
+                ? <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"32px", textAlign:"center", color:"#CCC", fontSize:14 }}>Nenhuma música encontrada.</div>
+                : <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:14 }}>
+                    {filtradas.map(s => {
+                        const catColor = CAT_COLORS[s.categoria] || "#616161";
+                        return (
+                            <div key={s.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", borderTop:`3px solid ${catColor}`, padding:"16px", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", cursor: isAdmin?"pointer":"default" }}
+                                onClick={isAdmin?()=>setModal(s):undefined}>
+                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+                                    <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23", flex:1, paddingRight:8 }}>{s.title}</div>
+                                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:catColor+"18", color:catColor, fontWeight:700, flexShrink:0 }}>{s.categoria}</span>
+                                </div>
+                                {s.compositor && <div style={{ fontSize:12, color:"#AAA", marginBottom:10 }}>{s.compositor}</div>}
+                                <div style={{ display:"flex", flexWrap:"wrap", marginTop:8 }}>
+                                    <MaterialBadge label="Partitura" icon="🎼" url={s.partitura} />
+                                    <MaterialBadge label="Áudio Original" icon="🎵" url={s.audioOriginal} />
+                                    <MaterialBadge label="Arranjo" icon="🎵" url={s.audioArranjo} />
+                                    <MaterialBadge label="Playback" icon="🎧" url={s.playback} />
+                                    {temNaipes(s) && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, marginRight:4, marginBottom:4 }}>🎶 Naipes</span>}
+                                    {s.letra && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5F5F5", color:"#666", fontSize:11, fontWeight:600, marginRight:4, marginBottom:4 }}>📄 Letra</span>}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            }
+
+            <div style={{ fontSize:12, color:"#AAA", marginTop:12, textAlign:"right" }}>{filtradas.length} música{filtradas.length!==1?"s":""}</div>
+
+            {modal && <ModalMusica musica={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -1128,7 +1346,7 @@ function App() {
     const pages = {
         painel:       <Painel user={user} config={config} />,
         integrantes:  <Integrantes config={config} />,
-        musicas:      <EmBreve label="Músicas"            icon="music" />,
+        musicas:      <Repertorio config={config} isAdmin={isAdmin} />,
         estudos:      <EmBreve label="Sala de Estudos"    icon="graduation-cap" />,
         agenda:       <Agenda config={config} isAdmin={isAdmin} />,
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
