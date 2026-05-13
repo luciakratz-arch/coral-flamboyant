@@ -3,180 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coral Flamboyant | Premium</title>
+    <title>Coral Flamboyant | Gestão Profissional</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <style>
-        :root {
-            --primary: #B41020;
-            --bg-gradient: linear-gradient(180deg, #F8F9FA 0%, #E9ECEF 100%);
-            --glass: rgba(255, 255, 255, 0.7);
-            --border: rgba(255, 255, 255, 0.4);
-        }
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-
-        body { 
-            background: var(--bg-gradient);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-        }
-
-        .iphone-container {
-            width: 100%;
-            max-width: 414px;
-            padding: 40px 20px;
-            position: relative;
-        }
-
-        /* Saudação mais discreta e elegante */
-        .greeting {
-            margin-bottom: 40px;
-            padding-left: 10px;
-        }
-
-        .greeting h2 { font-weight: 300; font-size: 24px; color: #1A1D23; }
-        .greeting b { font-weight: 600; color: var(--primary); }
-
-        /* Grid de Cards com efeito de Vidro (Glassmorphism) */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .glass-card {
-            background: var(--glass);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border-radius: 28px;
-            padding: 25px;
-            border: 1px solid var(--border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 160px;
-            transition: all 0.3s ease;
-        }
-
-        .glass-card:active { transform: scale(0.96); opacity: 0.8; }
-
-        .icon-circle {
-            width: 45px;
-            height: 45px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            color: var(--primary);
-            margin-bottom: 20px;
-        }
-
-        .card-label {
-            font-size: 15px;
-            font-weight: 500;
-            color: #2D3436;
-            letter-spacing: -0.3px;
-        }
-
-        .card-desc {
-            font-size: 11px;
-            color: #636E72;
-            margin-top: 4px;
-            display: block;
-        }
-
-        /* Barra de navegação inferior estilo Floating Dock */
-        .dock {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 85%;
-            max-width: 350px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 40px;
-            padding: 12px 25px;
-            display: flex;
-            justify-content: space-around;
-            border: 1px solid var(--border);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-
-        .dock-item {
-            color: #B2BEC3;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 9px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .dock-item.active { color: var(--primary); }
-
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="root"></div>
 
-    <div class="iphone-container">
-        <div class="greeting">
-            <h2>Olá, <b>Lúcia</b></h2>
-            <p style="font-size: 13px; color: #636E72;">O que vamos gerenciar hoje?</p>
-        </div>
-
-        <div class="dashboard-grid">
-            <div class="glass-card">
-                <div class="icon-circle"><i data-lucide="music-2"></i></div>
-                <div>
-                    <span class="card-label">Repertório</span>
-                    <span class="card-desc">Áudios e partituras</span>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <div class="icon-circle"><i data-lucide="calendar"></i></div>
-                <div>
-                    <span class="card-label">Ensaios</span>
-                    <span class="card-desc">Datas e locais</span>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <div class="icon-circle"><i data-lucide="folder-open"></i></div>
-                <div>
-                    <span class="card-label">Arquivos</span>
-                    <span class="card-desc">Documentos gerais</span>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <div class="icon-circle"><i data-lucide="users"></i></div>
-                <div>
-                    <span class="card-label">Coristas</span>
-                    <span class="card-desc">Gestão de membros</span>
-                </div>
-            </div>
-        </div>
-
-        <nav class="dock">
-            <div class="dock-item active"><i data-lucide="home"></i>Início</div>
-            <div class="dock-item"><i data-lucide="mic-2"></i>Vozes</div>
-            <div class="dock-item"><i data-lucide="user"></i>Perfil</div>
-        </nav>
-    </div>
-
-    <script>
-        lucide.createIcons();
-    </script>
+    <script type="text/babel" src="app.js"></script>
 </body>
 </html>
