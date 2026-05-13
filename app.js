@@ -896,9 +896,9 @@ function Agenda({ config, isAdmin }) {
 
 
 // ── AVISOS ────────────────────────────────────────────────────────────────────
-function ModalAviso({ onClose, config }) {
+function ModalAviso({ aviso, onClose, config }) {
     const cor = config.corPrimaria||COR;
-    const [form, setForm]         = useState({ title:"", prioridade:"Normal", text:"" });
+    const [form, setForm]         = useState(aviso ? { title:aviso.title, prioridade:aviso.prioridade||"Normal", text:aviso.text } : { title:"", prioridade:"Normal", text:"" });
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro]         = useState("");
 
@@ -906,13 +906,11 @@ function ModalAviso({ onClose, config }) {
         if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
         if (!form.text.trim())  { setErro("Mensagem é obrigatória."); return; }
         setSalvando(true);
-        await db.collection("avisos").add({
-            title: form.title,
-            prioridade: form.prioridade,
-            text: form.text,
-            tipo: "manual",
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        if (aviso) {
+            await db.collection("avisos").doc(aviso.id).update({ title:form.title, prioridade:form.prioridade, text:form.text, updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+        } else {
+            await db.collection("avisos").add({ title:form.title, prioridade:form.prioridade, text:form.text, tipo:"manual", createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        }
         setSalvando(false);
         onClose();
     }
@@ -925,7 +923,7 @@ function ModalAviso({ onClose, config }) {
             onClick={e=>e.target===e.currentTarget&&onClose()}>
             <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>Novo Aviso</div>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>{aviso?"Editar Aviso":"Novo Aviso"}</div>
                     <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                         <Icon name="x" size={16} color="#666" />
                     </button>
@@ -940,8 +938,8 @@ function ModalAviso({ onClose, config }) {
                     <label style={lbl}>Prioridade</label>
                     <select style={inp} value={form.prioridade} onChange={e=>setForm(f=>({...f,prioridade:e.target.value}))}>
                         <option>Normal</option>
+                        <option>Alta</option>
                         <option>Urgente</option>
-                        <option>Informativo</option>
                     </select>
                 </div>
                 <div style={{ marginBottom:20 }}>
@@ -953,7 +951,7 @@ function ModalAviso({ onClose, config }) {
                 <div style={{ display:"flex", gap:10 }}>
                     <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
                     <button onClick={publicar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
-                        {salvando?"Publicando...":"Publicar"}
+                        {salvando?"Salvando...":(aviso?"Salvar":"Publicar")}
                     </button>
                 </div>
             </div>
@@ -965,6 +963,7 @@ function Avisos({ config, isAdmin }) {
     const { data:avisos, loading:lA } = useCollection("avisos");
     const { data:members }            = useCollection("members");
     const [showModal, setShowModal]   = useState(false);
+    const [editAviso, setEditAviso]   = useState(null);
     const cor = config.corPrimaria||COR;
 
     if (lA) return <Spinner />;
@@ -977,8 +976,9 @@ function Avisos({ config, isAdmin }) {
     ).sort((a,b) => parseInt(a.birthday.split("-")[2]) - parseInt(b.birthday.split("-")[2]));
 
     // Cores por prioridade
-    const prioColor = { Urgente: cor, Normal:"#E65100", Informativo:"#1565C0" };
-    const prioIcon  = { Urgente:"alert-circle", Normal:"alert-circle", Informativo:"megaphone" };
+    const prioColor = { Urgente:cor, Alta:"#1565C0", Normal:"#E65100" };
+    const prioBg    = { Urgente:"#FFF5F5", Alta:"#EFF6FF", Normal:"#fff" };
+    const prioIcon  = { Urgente:"alert-circle", Alta:"alert-circle", Normal:"megaphone" };
 
     function fmtDataAviso(seconds) {
         if (!seconds) return "";
@@ -1032,32 +1032,40 @@ function Avisos({ config, isAdmin }) {
             )}
 
             {avisos.map(a => {
-                const borderColor = prioColor[a.prioridade] || cor;
-                const iconName    = prioIcon[a.prioridade]  || "megaphone";
+                const isAuto      = a.tipo && a.tipo !== "manual";
+                const borderColor = isAuto ? "#F59E0B" : (prioColor[a.prioridade] || cor);
+                const bgColor     = isAuto ? "#FFFBEB" : (prioBg[a.prioridade]    || "#fff");
+                const iconName    = isAuto ? "zap"     : (prioIcon[a.prioridade]  || "megaphone");
                 return (
-                    <div key={a.id} style={{ background: a.prioridade==="Urgente"?"#FFF5F5":"#fff", borderRadius:12, border:"1px solid #EEE8E8", borderLeft:`3px solid ${borderColor}`, padding:"16px 20px", marginBottom:10, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                    <div key={a.id} style={{ background:bgColor, borderRadius:12, border:"1px solid #EEE8E8", borderLeft:`3px solid ${borderColor}`, padding:"16px 20px", marginBottom:10, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
                                 <Icon name={iconName} size={16} color={borderColor} />
                                 <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23" }}>{a.title}</div>
+                                {!isAuto && a.prioridade && a.prioridade !== "Normal" && (
+                                    <span style={{ fontSize:10, padding:"2px 7px", borderRadius:10, background:borderColor+"20", color:borderColor, fontWeight:700, textTransform:"uppercase" }}>{a.prioridade}</span>
+                                )}
                             </div>
-                            <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginLeft:12 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, marginLeft:12 }}>
                                 <div style={{ fontSize:12, color:"#AAA" }}>{fmtDataAviso(a.createdAt?.seconds)}</div>
+                                {isAdmin && !isAuto && <button onClick={()=>setEditAviso(a)}
+                                    style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", padding:2 }}>
+                                    <Icon name="pencil" size={14} color="#AAA" />
+                                </button>}
                                 {isAdmin && <button onClick={()=>excluir(a.id)}
-                                    style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:2 }}>
-                                    <Icon name="trash-2" size={15} color="#CCC" />
+                                    style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", padding:2 }}>
+                                    <Icon name="trash-2" size={14} color="#CCC" />
                                 </button>}
                             </div>
                         </div>
                         <div style={{ fontSize:14, color:"#555", lineHeight:1.6 }}>{a.text}</div>
-                        {a.tipo && a.tipo !== "manual" && (
-                            <div style={{ marginTop:8, fontSize:11, color:"#AAA", fontStyle:"italic" }}>Aviso automático</div>
-                        )}
+                        {isAuto && <div style={{ marginTop:6, fontSize:11, color:"#B45309", fontStyle:"italic" }}>⚡ Aviso automático</div>}
                     </div>
                 );
             })}
 
             {showModal && <ModalAviso onClose={()=>setShowModal(false)} config={config} />}
+            {editAviso && <ModalAviso aviso={editAviso} onClose={()=>setEditAviso(null)} config={config} />}
         </div>
     );
 }
