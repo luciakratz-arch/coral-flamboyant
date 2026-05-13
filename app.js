@@ -19,7 +19,7 @@ const LOGO_URL  = "https://raw.githubusercontent.com/luciakratz-arch/coral-flamb
 const MONTHS_PT    = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const NAIPES  = ["Soprano","Contralto","Mezzo-soprano","Alto","Tenor","Barítono","Baixo"];
-const FUNCOES = ["Corista","Solista","Regente","Pianista","Maestro","Auxiliar"];
+const FUNCOES = ["Corista","Solista","Regente","Pianista","Produtora","Auxiliar"];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function fmtDate(d) { if (!d) return ""; const [y,m,dd]=d.split("-"); return `${parseInt(dd)} de ${MONTHS_PT[parseInt(m)-1]} de ${y}`; }
@@ -30,8 +30,11 @@ function useCollection(col, orderField="createdAt") {
     const [data, setData]       = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        const unsub = db.collection(col).orderBy(orderField,"desc")
-            .onSnapshot(snap => { setData(snap.docs.map(d=>({id:d.id,...d.data()}))); setLoading(false); }, ()=>setLoading(false));
+        const unsub = db.collection(col).onSnapshot(snap => {
+            const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+            docs.sort((a,b) => { const av=a[orderField]?.seconds||a[orderField]||""; const bv=b[orderField]?.seconds||b[orderField]||""; return bv>av?1:-1; });
+            setData(docs); setLoading(false);
+        }, ()=>setLoading(false));
         return unsub;
     }, [col]);
     return { data, loading };
@@ -519,6 +522,69 @@ function EmBreve({ label, icon }) {
     </div>;
 }
 
+// ── CADASTRO PÚBLICO ──────────────────────────────────────────────────────
+function CadastroPublico({ config }) {
+    const cor = config.corPrimaria||COR;
+    const fundo = config.corFundo||COR_FUNDO;
+    const vazio = { name:"", funcao:"Corista", voice:"Soprano", email:"", phone:"", birthday:"", notes:"" };
+    const [form, setForm] = useState(vazio);
+    const [salvando, setSalvando] = useState(false);
+    const [ok, setOk] = useState(false);
+    const [erro, setErro] = useState("");
+
+    async function salvar() {
+        if (!form.name.trim()) { setErro("Nome é obrigatório."); return; }
+        if (!form.phone.trim()) { setErro("Telefone é obrigatório."); return; }
+        setSalvando(true);
+        await db.collection("members").add({ ...form, active: true, startDate: new Date().toISOString().split("T")[0], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        setSalvando(false);
+        setOk(true);
+    }
+
+    const inp = { width:"100%", padding:"12px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#fff" };
+    const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#888", marginBottom:5 };
+
+    if (ok) return (
+        <div style={{ minHeight:"100vh", background:fundo, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
+            <div style={{ width:80, height:80, background:"#E8F5E9", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+                <Icon name="check" size={36} color="#2E7D32" />
+            </div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, fontWeight:700, color:"#1A1D23", marginBottom:8, textAlign:"center" }}>Cadastro realizado!</div>
+            <div style={{ fontSize:15, color:"#888", textAlign:"center" }}>Obrigado, {form.name.split(" ")[0]}! Seu cadastro foi enviado e será revisado pela gestão.</div>
+        </div>
+    );
+
+    return (
+        <div style={{ minHeight:"100vh", background:fundo, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 20px" }}>
+            <div style={{ textAlign:"center", marginBottom:28 }}>
+                <div style={{ width:80, height:80, background:"#fff", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", boxShadow:"0 4px 20px rgba(0,0,0,0.1)" }}>
+                    <img src={config.logoUrl||LOGO_URL} alt="" style={{ width:56, height:56, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />
+                </div>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:cor }}>{config.nomeApp||"Flamboyant Coral"}</div>
+                <div style={{ fontSize:13, color:"#AAA", marginTop:4 }}>Cadastro de Corista</div>
+            </div>
+            <div style={{ background:"#fff", borderRadius:16, border:"1px solid #EEE0E0", padding:"24px 20px", width:"100%", maxWidth:480, boxShadow:"0 4px 24px rgba(0,0,0,0.07)" }}>
+                <div style={{ marginBottom:16 }}><label style={lbl}>Nome Completo *</label><input style={inp} value={form.name} onChange={e=>{setForm(f=>({...f,name:e.target.value}));setErro("");}} autoFocus /></div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                    <div><label style={lbl}>Função</label><select style={inp} value={form.funcao} onChange={e=>setForm(f=>({...f,funcao:e.target.value}))}>{FUNCOES.map(f=><option key={f}>{f}</option>)}</select></div>
+                    <div><label style={lbl}>Naipe</label><select style={inp} value={form.voice} onChange={e=>setForm(f=>({...f,voice:e.target.value}))}>{NAIPES.map(n=><option key={n}>{n}</option>)}</select></div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                    <div><label style={lbl}>Telefone *</label><input style={inp} value={form.phone||""} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="(00) 9 0000-0000" /></div>
+                    <div><label style={lbl}>E-mail</label><input style={inp} type="email" value={form.email||""} onChange={e=>setForm(f=>({...f,email:e.target.value}))} /></div>
+                </div>
+                <div style={{ marginBottom:16 }}><label style={lbl}>Data de Nascimento</label><input type="date" style={inp} value={form.birthday||""} onChange={e=>setForm(f=>({...f,birthday:e.target.value}))} /></div>
+                <div style={{ marginBottom:20 }}><label style={lbl}>Observações</label><textarea style={{ ...inp, minHeight:70, resize:"vertical" }} value={form.notes||""} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} /></div>
+                {erro // ── NAV ─// ── NAV ─ <div style={{ fontSize:13, color:cor, marginBottom:12 }}>{erro}</div>}
+                <button onClick={salvar} disabled={salvando} style={{ width:"100%", padding:"14px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                    {salvando?"Enviando...":"Enviar Cadastro"}
+                </button>
+            </div>
+            <div style={{ marginTop:24, fontSize:11, color:"#CCC" }}>{config.nomeApp||"Flamboyant Coral"} · Portal de Gestão</div>
+        </div>
+    );
+}
+
 // ── NAV ───────────────────────────────────────────────────────────────────────
 const NAV_ADMIN = [
     { key:"painel",       label:"Painel",            icon:"layout-dashboard" },
@@ -555,6 +621,8 @@ function App() {
     function handleLogin(u)  { localStorage.setItem("cf_user",JSON.stringify(u)); setUser(u); setTab(u.isAdmin?"painel":"agenda"); }
     function handleLogout()  { localStorage.removeItem("cf_user"); setUser(null); }
 
+    const isCadastro = new URLSearchParams(window.location.search).get("cadastro") === "1";
+    if (isCadastro) return <CadastroPublico config={config} />;
     if (!user) return <Login members={members} onLogin={handleLogin} config={config} />;
 
     const isAdmin  = user.isAdmin;
