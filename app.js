@@ -256,6 +256,117 @@ function PlayerModal({ url, title, onClose, letra, naipes }) {
     );
 }
 
+
+// ── MESA DE SOM (página pública para sonoplasta) ──────────────────────────────
+function MesaSom({ eventoId, config }) {
+    const [evento, setEvento] = useState(null);
+    const [tocando, setTocando] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const cor = config.corPrimaria || COR;
+
+    useEffect(() => {
+        db.collection("events").doc(eventoId).get().then(doc => {
+            if (doc.exists) setEvento({ id: doc.id, ...doc.data() });
+            setLoading(false);
+        });
+    }, [eventoId]);
+
+    if (loading) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#111" }}><div style={{ width:32, height:32, border:`3px solid ${cor}`, borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} /></div>;
+
+    if (!evento) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#111", color:"#AAA", fontSize:16 }}>Evento não encontrado.</div>;
+
+    const setlist = evento.setlist || [];
+
+    function getEmbed(url) {
+        if (!url) return null;
+        const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (yt) return `https://www.youtube.com/embed/${yt[1]}?autoplay=1`;
+        const dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (dr) return `https://drive.google.com/file/d/${dr[1]}/preview`;
+        return url;
+    }
+
+    return (
+        <div style={{ minHeight:"100vh", background:"#111", color:"#fff", fontFamily:"'Inter',sans-serif" }}>
+            {/* Header */}
+            <div style={{ background:"#1A1D23", padding:"16px 24px", borderBottom:"1px solid #333", display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:36, height:36, background:cor, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <img src={config.logoUrl||LOGO_URL} alt="" style={{ width:24, height:24, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />
+                </div>
+                <div>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#fff" }}>{config.nomeApp||"Coral Flamboyant"}</div>
+                    <div style={{ fontSize:12, color:"#AAA" }}>Mesa de Som — {evento.title} · {evento.date}</div>
+                </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", minHeight:"calc(100vh - 68px)" }}>
+                {/* Setlist lateral */}
+                <div style={{ background:"#1A1D23", borderRight:"1px solid #333", overflowY:"auto" }}>
+                    <div style={{ padding:"14px 16px", borderBottom:"1px solid #333", fontSize:11, fontWeight:700, color:"#AAA", textTransform:"uppercase", letterSpacing:1 }}>
+                        Setlist — {setlist.length} música{setlist.length!==1?"s":""}
+                    </div>
+                    {setlist.length === 0 && (
+                        <div style={{ padding:"24px 16px", textAlign:"center", color:"#555", fontSize:13 }}>Nenhuma música no setlist.</div>
+                    )}
+                    {setlist.map((s, i) => (
+                        <div key={i} onClick={() => setTocando(s)}
+                            style={{ padding:"12px 16px", borderBottom:"1px solid #222", cursor:"pointer", background: tocando?.id===s.id ? cor+"30" : "transparent", borderLeft: tocando?.id===s.id ? `3px solid ${cor}` : "3px solid transparent", transition:"background 0.15s" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                                <span style={{ fontSize:13, color: tocando?.id===s.id ? cor : "#555", fontWeight:700, minWidth:22 }}>{i+1}</span>
+                                <div style={{ flex:1 }}>
+                                    <div style={{ fontSize:13, fontWeight:600, color: tocando?.id===s.id ? "#fff" : "#CCC" }}>{s.title}</div>
+                                    {s.compositor && <div style={{ fontSize:11, color:"#555" }}>{s.compositor}</div>}
+                                </div>
+                                {(s.playback||s.audioOriginal) && <Icon name="play-circle" size={14} color={tocando?.id===s.id ? cor : "#444"} />}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Player principal */}
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
+                    {!tocando ? (
+                        <div style={{ textAlign:"center", color:"#444" }}>
+                            <Icon name="music" size={64} color="#333" />
+                            <div style={{ marginTop:16, fontSize:18, fontWeight:600, color:"#555" }}>Clique em uma música para reproduzir</div>
+                        </div>
+                    ) : (
+                        <div style={{ width:"100%", maxWidth:700 }}>
+                            <div style={{ marginBottom:16, textAlign:"center" }}>
+                                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, fontWeight:700, color:"#fff" }}>{tocando.title}</div>
+                                {tocando.compositor && <div style={{ fontSize:14, color:"#AAA", marginTop:4 }}>{tocando.compositor}</div>}
+                            </div>
+                            {(tocando.playback||tocando.audioOriginal) ? (
+                                <iframe src={getEmbed(tocando.playback||tocando.audioOriginal)}
+                                    style={{ width:"100%", height:400, border:"none", borderRadius:12 }}
+                                    allow="autoplay; fullscreen" allowFullScreen title={tocando.title} />
+                            ) : (
+                                <div style={{ padding:"48px 24px", background:"#1A1D23", borderRadius:12, textAlign:"center", color:"#555", fontSize:14 }}>
+                                    Sem playback cadastrado para esta música.
+                                </div>
+                            )}
+                            {/* Próxima */}
+                            {setlist[setlist.findIndex(s=>s.id===tocando.id)+1] && (
+                                <div style={{ marginTop:16, padding:"12px 16px", background:"#1A1D23", borderRadius:10, display:"flex", alignItems:"center", gap:10 }}>
+                                    <Icon name="skip-forward" size={16} color="#AAA" />
+                                    <div style={{ flex:1 }}>
+                                        <div style={{ fontSize:11, color:"#555" }}>A seguir</div>
+                                        <div style={{ fontSize:14, color:"#CCC", fontWeight:600 }}>{setlist[setlist.findIndex(s=>s.id===tocando.id)+1].title}</div>
+                                    </div>
+                                    <button onClick={()=>setTocando(setlist[setlist.findIndex(s=>s.id===tocando.id)+1])}
+                                        style={{ padding:"8px 16px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                        Próxima →
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 function Login({ members, onLogin, config }) {
     const [tela, setTela]       = useState(null);
@@ -1870,8 +1981,11 @@ function App() {
     function handleLogin(u)  { localStorage.setItem("cf_user",JSON.stringify(u)); setUser(u); setTab(u.isAdmin?"painel":"agenda"); }
     function handleLogout()  { localStorage.removeItem("cf_user"); setUser(null); }
 
-    const isCadastro = new URLSearchParams(window.location.search).get("cadastro") === "1";
+    const params = new URLSearchParams(window.location.search);
+    const isCadastro = params.get("cadastro") === "1";
+    const mesaId     = params.get("mesa");
     if (isCadastro) return <CadastroPublico config={config} />;
+    if (mesaId)     return <MesaSom eventoId={mesaId} config={config} />;
     if (!user) return <Login members={members} onLogin={handleLogin} config={config} />;
 
     const isAdmin  = user.isAdmin;
