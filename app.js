@@ -2129,6 +2129,212 @@ function Relatorios({ config }) {
     const sigLucia  = textos.sigLucia  || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
     const sigMaestro= textos.sigMaestro|| "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
 
+    function gerarPDFListaPresenca() {
+        const nomeApp    = config.nomeApp    || "Flamboyant Coral";
+        const logoUrl    = config.logoUrl    || LOGO_URL;
+        const cidade     = textos.cidade     || "Goiânia – GO";
+        const maestro    = textos.maestro    || "Maestro";
+        const produtora  = textos.produtora  || "Lucia Kratz";
+        const sigLucia   = textos.sigLucia   || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje       = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodoFmt = `${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+
+        const porEvento = {};
+        frequencias.forEach(f=>{ if(f.eventoId){if(!porEvento[f.eventoId])porEvento[f.eventoId]=[];porEvento[f.eventoId].push(f);} });
+
+        const eventosComFreq = eventosFiltrados
+            .filter(e=>porEvento[e.id]?.length>0)
+            .sort((a,b)=>a.date>b.date?1:-1);
+
+        if (eventosComFreq.length===0) { alert("Nenhum evento com presença registrada no período."); return; }
+
+        const paginas = eventosComFreq.map(e=>{
+            const lista = porEvento[e.id]||[];
+            const dataEvento = e.date ? new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}) : "";
+            const linhas = lista.map((f,i)=>`
+                <tr>
+                    <td style="text-align:center;width:36px">${i+1}</td>
+                    <td>${f.membroNome}</td>
+                    <td>${f.naipe||"—"}</td>
+                    <td style="text-align:center">${f.dataHora?.seconds?new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"—"}</td>
+                </tr>`).join("");
+            return `
+                <div class="pagina">
+                    <div class="header">
+                        <img src="${logoUrl}" class="logo"/>
+                        <div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}</div>
+                    </div>
+                    <div class="titulo">Lista de Presença</div>
+                    <div class="evento-info">
+                        <div class="info-row"><span class="info-lbl">Evento:</span><span>${e.title}</span></div>
+                        <div class="info-row"><span class="info-lbl">Data:</span><span>${dataEvento}</span></div>
+                        ${e.local?`<div class="info-row"><span class="info-lbl">Local:</span><span>${e.local}</span></div>`:""}
+                        ${e.tipo?`<div class="info-row"><span class="info-lbl">Tipo:</span><span>${e.tipo}</span></div>`:""}
+                        <div class="info-row"><span class="info-lbl">Presenças:</span><span><strong>${lista.length}</strong> participante${lista.length!==1?"s":""}</span></div>
+                    </div>
+                    <table>
+                        <thead><tr><th>#</th><th>Nome</th><th>Naipe</th><th style="text-align:center">Horário Check-in</th></tr></thead>
+                        <tbody>${linhas}</tbody>
+                    </table>
+                    <div class="assinaturas">
+                        <div class="assin">
+                            ${sigMaestro?`<img src="${sigMaestro}"/>`:"<div style='height:52px'></div>"}
+                            <div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div>
+                        </div>
+                        <div class="assin">
+                            ${sigLucia?`<img src="${sigLucia}"/>`:"<div style='height:52px'></div>"}
+                            <div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div>
+                        </div>
+                    </div>
+                    <div class="rodape">Documento gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+                </div>`;
+        }).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:0}
+  @media print{@page{margin:2cm}.pagina{page-break-after:always}.pagina:last-child{page-break-after:avoid}}
+  .pagina{padding:0;margin-bottom:40px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${cor};padding-bottom:12px;margin-bottom:20px}
+  .logo{width:54px;height:54px;object-fit:contain}
+  .titulo{text-align:center;font-size:17px;font-weight:bold;color:${cor};text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+  .evento-info{border:1px solid #EEE;border-radius:6px;padding:12px 16px;margin-bottom:16px;background:#FAFAFA}
+  .info-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px}
+  .info-lbl{font-weight:bold;color:${cor};min-width:80px;font-size:11px;text-transform:uppercase}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{background:${cor};color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+  td{padding:7px 10px;border-bottom:1px solid #EEE;font-size:12px}
+  tr:nth-child(even) td{background:#FAFAFA}
+  .assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}
+  .assin img{height:52px;object-fit:contain;display:block;margin:0 auto 6px}
+  .assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}
+  .assin-nome{font-weight:bold;font-size:12px}
+  .assin-cargo{font-size:10px;color:#888}
+  .rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}
+</style></head><body>${paginas}</body></html>`;
+
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
+    function gerarPDFCompleto() {
+        const nomeApp    = config.nomeApp    || "Flamboyant Coral";
+        const logoUrl    = config.logoUrl    || LOGO_URL;
+        const cidade     = textos.cidade     || "Goiânia – GO";
+        const maestro    = textos.maestro    || "Maestro";
+        const produtora  = textos.produtora  || "Lucia Kratz";
+        const sigLucia   = textos.sigLucia   || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje       = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodoFmt = `${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+
+        // Frequência por evento
+        const porEvento = {};
+        frequencias.forEach(f=>{ if(f.eventoId){if(!porEvento[f.eventoId])porEvento[f.eventoId]=[];porEvento[f.eventoId].push(f);} });
+
+        // Frequência por integrante
+        const porIntegrante = {};
+        frequencias.filter(f=>eventosFiltrados.find(e=>e.id===f.eventoId)).forEach(f=>{
+            if(!porIntegrante[f.membroNome]) porIntegrante[f.membroNome]=0;
+            porIntegrante[f.membroNome]++;
+        });
+
+        const linhasAtiv = eventosFiltrados.sort((a,b)=>a.date>b.date?1:-1).map((e,i)=>`
+            <tr><td>${i+1}</td><td>${e.date?new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR"):""}</td>
+            <td>${e.title||""}</td><td>${e.tipo||""}</td><td>${e.status||""}</td><td>${e.local||""}</td></tr>`).join("");
+
+        const blocosPresenca = eventosFiltrados
+            .filter(e=>porEvento[e.id]?.length>0)
+            .sort((a,b)=>a.date>b.date?1:-1)
+            .map(e=>{
+                const lista = porEvento[e.id]||[];
+                const linhas = lista.map((f,i)=>`<tr><td>${i+1}</td><td>${f.membroNome}</td><td>${f.naipe||"—"}</td><td>${f.dataHora?.seconds?new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"—"}</td></tr>`).join("");
+                return `<div class="bloco-evento">
+                    <div class="evento-hdr"><span>${e.title} — ${e.date?new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR"):""}</span><span>${lista.length} presente${lista.length!==1?"s":""}</span></div>
+                    <table><thead><tr><th>#</th><th>Nome</th><th>Naipe</th><th>Check-in</th></tr></thead><tbody>${linhas}</tbody></table>
+                </div>`;
+            }).join("");
+
+        const linhasIntegrantes = ativos.sort((a,b)=>a.name>b.name?1:-1).map((m,i)=>`
+            <tr><td>${i+1}</td><td>${m.name}</td><td>${m.voice||"—"}</td><td>${m.funcao||"Corista"}</td>
+            <td>${m.startDate?new Date(m.startDate+"T12:00:00").toLocaleDateString("pt-BR",{month:"short",year:"numeric"}):""}</td>
+            <td style="text-align:center">${porIntegrante[m.name]||0}</td></tr>`).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:0}
+  @media print{@page{margin:2cm}.bloco-evento{page-break-inside:avoid}}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${cor};padding-bottom:14px;margin-bottom:20px}
+  .logo{width:56px;height:56px;object-fit:contain}
+  .titulo{text-align:center;font-size:18px;font-weight:bold;color:${cor};text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
+  .periodo{text-align:center;font-size:12px;color:#666;margin-bottom:20px}
+  .cards{display:flex;gap:10px;margin-bottom:20px}
+  .card{flex:1;border:1px solid #EEE;border-radius:6px;padding:10px;text-align:center}
+  .card-num{font-size:22px;font-weight:bold;color:${cor}}
+  .card-lbl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px}
+  .secao{font-size:11px;font-weight:bold;color:${cor};text-transform:uppercase;letter-spacing:2px;margin:22px 0 10px;border-bottom:2px solid ${cor};padding-bottom:4px}
+  .bloco{border-left:3px solid ${cor};padding:8px 12px;margin-bottom:8px;background:#FAFAFA;border-radius:0 4px 4px 0}
+  .bloco-titulo{font-size:10px;font-weight:bold;color:${cor};margin-bottom:3px;text-transform:uppercase}
+  .bloco-evento{margin-bottom:20px}
+  .evento-hdr{display:flex;justify-content:space-between;background:${cor}15;border-left:3px solid ${cor};padding:6px 10px;font-size:11px;font-weight:bold;margin-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:6px}
+  th{background:${cor};color:#fff;padding:5px 8px;text-align:left;font-size:9px;text-transform:uppercase}
+  td{padding:5px 8px;border-bottom:1px solid #EEE;font-size:11px}
+  tr:nth-child(even) td{background:#FAFAFA}
+  .tipo-linha{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F0F0F0;font-size:11px}
+  .assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}
+  .assin img{height:52px;object-fit:contain;display:block;margin:0 auto 6px}
+  .assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}
+  .assin-nome{font-weight:bold;font-size:12px}
+  .assin-cargo{font-size:10px;color:#888}
+  .rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" class="logo"/>
+  <div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}${maestro?"<br>Maestro: "+maestro:""}</div>
+</div>
+<div class="titulo">Relatório de Atividades</div>
+<div class="periodo">Período: ${periodoFmt}</div>
+<div class="cards">
+  <div class="card"><div class="card-num">${eventosFiltrados.length}</div><div class="card-lbl">Total atividades</div></div>
+  <div class="card"><div class="card-num">${ativos.length}</div><div class="card-lbl">Integrantes ativos</div></div>
+  <div class="card"><div class="card-num">${apresentacoes.length}</div><div class="card-lbl">Apresentações</div></div>
+  <div class="card"><div class="card-num">${eventosFiltrados.filter(e=>porEvento[e.id]?.length>0).length}</div><div class="card-lbl">Com frequência</div></div>
+</div>
+<div class="secao">Distribuição por tipo de atividade</div>
+${Object.entries(porTipo).map(([k,v])=>`<div class="tipo-linha"><span>${k}</span><span style="font-weight:bold;color:${cor}">${v}</span></div>`).join("")}
+${textos.sobreProjeto||textos.curriculoMaestro||textos.equipe?`
+<div class="secao">Informações do Projeto</div>
+${textos.sobreProjeto?`<div class="bloco"><div class="bloco-titulo">Sobre o Projeto</div><p style="margin:4px 0;font-size:11px;line-height:1.6">${textos.sobreProjeto}</p></div>`:""}
+${textos.curriculoMaestro?`<div class="bloco"><div class="bloco-titulo">Currículo do Maestro</div><p style="margin:4px 0;font-size:11px;line-height:1.6">${textos.curriculoMaestro}</p></div>`:""}
+${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produção</div><p style="margin:4px 0;font-size:11px;line-height:1.6">${textos.equipe}</p></div>`:""}
+`:""}
+<div class="secao">Atividades realizadas no período</div>
+<table><thead><tr><th>#</th><th>Data</th><th>Atividade</th><th>Tipo</th><th>Status</th><th>Local</th></tr></thead>
+<tbody>${linhasAtiv||"<tr><td colspan='6' style='text-align:center;color:#AAA'>Nenhuma atividade</td></tr>"}</tbody></table>
+${blocosPresenca?`<div class="secao">Listas de Presença por Evento</div>${blocosPresenca}`:""}
+<div class="secao">Integrantes Ativos (${ativos.length})</div>
+<table><thead><tr><th>#</th><th>Nome</th><th>Naipe</th><th>Função</th><th>Desde</th><th style="text-align:center">Presenças</th></tr></thead>
+<tbody>${linhasIntegrantes||"<tr><td colspan='6' style='text-align:center;color:#AAA'>Nenhum integrante</td></tr>"}</tbody></table>
+<div class="assinaturas">
+  <div class="assin">${sigMaestro?`<img src="${sigMaestro}"/>`:"<div style='height:52px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div>
+  </div>
+  <div class="assin">${sigLucia?`<img src="${sigLucia}"/>`:"<div style='height:52px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div>
+  </div>
+</div>
+<div class="rodape">Relatório gerado em ${hoje} pelo sistema de gestão do ${nomeApp}. Documento confidencial.</div>
+</body></html>`;
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
     function gerarPDF() {
         const nomeApp   = config.nomeApp   || "Flamboyant Coral";
         const logoUrl   = config.logoUrl   || LOGO_URL;
@@ -2369,10 +2575,16 @@ ${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produç�
                     <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>
                         Atividades no período <span style={{ fontSize:13, color:"#AAA", fontWeight:400 }}>({eventosFiltrados.length})</span>
                     </div>
-                    <button onClick={gerarPDF}
-                        style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                        <Icon name="printer" size={14} color="#fff" /> Gerar PDF
-                    </button>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                        <button onClick={gerarPDFListaPresenca}
+                            style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:"#fff", color:cor, border:`1px solid ${cor}`, borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                            <Icon name="clipboard-list" size={14} color={cor} /> Lista de Presença
+                        </button>
+                        <button onClick={gerarPDFCompleto}
+                            style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                            <Icon name="file-text" size={14} color="#fff" /> Relatório Completo para Empresa
+                        </button>
+                    </div>
                 </div>
                 {eventosFiltrados.length === 0
                     ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma atividade no período selecionado.</div>
