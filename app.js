@@ -407,8 +407,9 @@ function Login({ members, onLogin, config }) {
 
             {!tela && <div style={s.card}>
                 {[
-                    { id:"admin",   icon:"shield", label:"Acesso Administrativo", sub:"Gestão completa do coral",   cor:COR,      bg:"rgba(180,16,32,0.08)" },
-                    { id:"corista", icon:"users",  label:"Sou Corista",            sub:"Acesso às músicas e agenda", cor:"#2E7D32", bg:"rgba(46,125,50,0.08)" },
+                    { id:"admin",   icon:"shield",     label:"Acesso Administrativo", sub:"Gestão completa do coral",   cor:COR,       bg:"rgba(180,16,32,0.08)" },
+                    { id:"corista", icon:"users",      label:"Sou Corista",            sub:"Acesso às músicas e agenda", cor:"#2E7D32",  bg:"rgba(46,125,50,0.08)" },
+                    { id:"rh",      icon:"briefcase",  label:"Sou do RH",              sub:"Pessoas e Cultura",          cor:"#1565C0",  bg:"rgba(21,101,192,0.08)" },
                 ].map(p=>(
                     <button key={p.id} onClick={()=>{setTela(p.id);setErro("");setSenha("");setBusca("");setSugestoes([]);}}
                         style={{ display:"flex", alignItems:"center", gap:14, background:p.bg, border:`1px solid ${p.cor}22`, borderRadius:12, padding:"16px", width:"100%", marginBottom:10, cursor:"pointer", textAlign:"left", fontFamily:"inherit" }}>
