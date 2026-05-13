@@ -727,12 +727,55 @@ function ModalEvento({ evento, onClose, config }) {
     );
 }
 
+function ModalExcluirEvento({ evento, onClose }) {
+    const [excluindo, setExcluindo] = useState(false);
+
+    async function excluirSoEste() {
+        setExcluindo(true);
+        await db.collection("events").doc(evento.id).delete();
+        onClose();
+    }
+    async function excluirFuturos() {
+        setExcluindo(true);
+        const snap = await db.collection("events").where("grupoId","==",evento.grupoId).get();
+        const batch = db.batch();
+        snap.docs.forEach(doc => { if (doc.data().date >= evento.date) batch.delete(doc.ref); });
+        await batch.commit();
+        onClose();
+    }
+    async function excluirTodos() {
+        setExcluindo(true);
+        const snap = await db.collection("events").where("grupoId","==",evento.grupoId).get();
+        const batch = db.batch();
+        snap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        onClose();
+    }
+
+    const btnBase = { width:"100%", padding:"13px", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:8, opacity: excluindo?0.6:1 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#fff", borderRadius:16, padding:"24px 20px", width:"100%", maxWidth:360, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:"#1A1D23", marginBottom:8 }}>Excluir evento</div>
+                <div style={{ fontSize:13, color:"#888", marginBottom:20 }}>"{evento.title}" faz parte de uma série. O que deseja excluir?</div>
+                <button onClick={excluirSoEste} disabled={excluindo} style={{ ...btnBase, background:"#F5EAEA", color:"#B41020" }}>Só este evento</button>
+                <button onClick={excluirFuturos} disabled={excluindo} style={{ ...btnBase, background:"#FFF3E0", color:"#E65100" }}>Este e os futuros</button>
+                <button onClick={excluirTodos} disabled={excluindo} style={{ ...btnBase, background:"#B41020", color:"#fff" }}>Excluir toda a série</button>
+                <button onClick={onClose} disabled={excluindo} style={{ ...btnBase, background:"#F0F0F0", color:"#666", marginBottom:0 }}>Cancelar</button>
+            </div>
+        </div>
+    );
+}
+
 function Agenda({ config, isAdmin }) {
     const { data:events, loading } = useCollection("events","date");
-    const [mes, setMes]     = useState(new Date().getMonth());
-    const [ano, setAno]     = useState(new Date().getFullYear());
-    const [modal, setModal] = useState(null);
+    const [mes, setMes]         = useState(new Date().getMonth());
+    const [ano, setAno]         = useState(new Date().getFullYear());
+    const [modal, setModal]     = useState(null);
     const [detalhe, setDetalhe] = useState(null);
+    const [excluirEvento, setExcluirEvento] = useState(null);
     const cor = config.corPrimaria||COR;
 
     if (loading) return <Spinner />;
@@ -825,21 +868,7 @@ function Agenda({ config, isAdmin }) {
                                         style={{ padding:"7px 14px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                                         Detalhes
                                     </button>
-                                    <button onClick={async()=>{
-                                        if (!e.grupoId) {
-                                            if (window.confirm("Excluir este evento?")) await db.collection("events").doc(e.id).delete();
-                                        } else {
-                                            const opcao = window.confirm("OK = Excluir ESTE E OS FUTUROS da série.\nCancelar = Excluir SÓ ESTE evento.");
-                                            if (opcao) {
-                                                const snap = await db.collection("events").where("grupoId","==",e.grupoId).get();
-                                                const batch = db.batch();
-                                                snap.docs.forEach(doc => { if (doc.data().date >= e.date) batch.delete(doc.ref); });
-                                                await batch.commit();
-                                            } else {
-                                                await db.collection("events").doc(e.id).delete();
-                                            }
-                                        }
-                                    }}
+                                    <button onClick={()=>{ e.grupoId ? setExcluirEvento(e) : (window.confirm("Excluir este evento?") && db.collection("events").doc(e.id).delete()); }}
                                         style={{ width:32, height:32, background:"#FFF0F0", border:"1px solid #F5DADA", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                                         <Icon name="trash-2" size={14} color="#B41020" />
                                     </button>
@@ -851,6 +880,7 @@ function Agenda({ config, isAdmin }) {
             }
 
             {modal && <ModalEvento evento={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+            {excluirEvento && <ModalExcluirEvento evento={excluirEvento} onClose={()=>setExcluirEvento(null)} />}
         </div>
     );
 }
