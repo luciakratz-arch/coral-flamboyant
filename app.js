@@ -702,8 +702,9 @@ const STATUS_COLORS  = { Planejada:"#1565C0", Confirmado:"#2E7D32", Cancelado:"#
 
 function ModalEvento({ evento, onClose, config }) {
     const cor = config.corPrimaria||COR;
-    const vazio = { title:"", date:todayStr(), tipo:"Ensaio", status:"Planejada", timeChegada:"", timeApresentacao:"", local:"", mapsUrl:"", notes:"", recorrencia:"Sem recorrência" };
-    const [form, setForm]         = useState(evento?{...vazio,...evento}:vazio);
+    const { data:songs } = useCollection("songs");
+    const vazio = { title:"", date:todayStr(), tipo:"Ensaio", status:"Planejada", timeChegada:"", timeApresentacao:"", local:"", mapsUrl:"", notes:"", recorrencia:"Sem recorrência", setlist:[] };
+    const [form, setForm]         = useState(evento?{...vazio,...evento, setlist:evento.setlist||[]}:vazio);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro]         = useState("");
 
@@ -712,7 +713,7 @@ function ModalEvento({ evento, onClose, config }) {
         if (!form.date)         { setErro("Data é obrigatória.");   return; }
         setSalvando(true);
         const grupoId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        const d = { title:form.title, date:form.date, tipo:form.tipo, status:form.status, timeChegada:form.timeChegada||"", timeApresentacao:form.timeApresentacao||"", local:form.local||"", mapsUrl:form.mapsUrl||"", notes:form.notes||"", recorrencia:form.recorrencia };
+        const d = { title:form.title, date:form.date, tipo:form.tipo, status:form.status, timeChegada:form.timeChegada||"", timeApresentacao:form.timeApresentacao||"", local:form.local||"", mapsUrl:form.mapsUrl||"", notes:form.notes||"", recorrencia:form.recorrencia, setlist:form.setlist||[] };
         if (evento) {
             await db.collection("events").doc(evento.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
         } else {
@@ -820,6 +821,43 @@ function ModalEvento({ evento, onClose, config }) {
                 <div style={{ marginBottom:16 }}>
                     <label style={lbl}>Observações</label>
                     <textarea style={{ ...inp, minHeight:80, resize:"vertical" }} value={form.notes||""} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Informações adicionais..." />
+                </div>
+
+                {/* Repertório do evento */}
+                <div style={{ marginBottom:16, paddingTop:16, borderTop:"1px solid #EEE" }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Repertório do Evento</div>
+                    {(form.setlist||[]).length > 0 && (
+                        <div style={{ marginBottom:10 }}>
+                            {form.setlist.map((s,i)=>(
+                                <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px", background:"#F9F5F5", borderRadius:8, marginBottom:6 }}>
+                                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                                        <span style={{ fontSize:12, color:cor, fontWeight:700, minWidth:20 }}>{i+1}</span>
+                                        <div>
+                                            <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{s.title}</div>
+                                            {s.compositor && <div style={{ fontSize:11, color:"#AAA" }}>{s.compositor}</div>}
+                                        </div>
+                                    </div>
+                                    <button onClick={()=>setForm(f=>({...f,setlist:f.setlist.filter((_,j)=>j!==i)}))}
+                                        style={{ background:"none", border:"none", cursor:"pointer", color:"#CCC", padding:4 }}>
+                                        <Icon name="x" size={14} color="#CCC" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <select style={{ ...inp, color: "#888" }}
+                        onChange={e=>{
+                            const song = songs.find(s=>s.id===e.target.value);
+                            if (song && !(form.setlist||[]).find(s=>s.id===song.id)) {
+                                setForm(f=>({...f, setlist:[...(f.setlist||[]), {id:song.id, title:song.title, compositor:song.compositor||"", playback:song.playback||"", audioOriginal:song.audioOriginal||""}]}));
+                            }
+                            e.target.value = "";
+                        }}>
+                        <option value="">+ Adicionar música ao repertório...</option>
+                        {songs.filter(s=>!(form.setlist||[]).find(sl=>sl.id===s.id)).map(s=>(
+                            <option key={s.id} value={s.id}>{s.title}{s.compositor?" — "+s.compositor:""}</option>
+                        ))}
+                    </select>
                 </div>
 
                 {!evento && <div style={{ marginBottom:20, paddingTop:16, borderTop:"1px solid #EEE" }}>
@@ -1602,6 +1640,191 @@ function SalaEstudos({ config, isAdmin }) {
 }
 
 
+
+// ── APRESENTAÇÃO ──────────────────────────────────────────────────────────────
+function Apresentacao({ config }) {
+    const { data:events }         = useCollection("events","date");
+    const [eventoSel, setEventoSel] = useState(null);
+    const [setlist, setSetlist]   = useState([]);
+    const [tocando, setTocando]   = useState(null);
+    const [dragIdx, setDragIdx]   = useState(null);
+    const cor = config.corPrimaria||COR;
+    const today = todayStr();
+
+    useEffect(()=>{
+        if (eventoSel) setSetlist(eventoSel.setlist||[]);
+        else setSetlist([]);
+        setTocando(null);
+    },[eventoSel?.id]);
+
+    const proximos = events.filter(e=>e.date>=today && e.setlist?.length>0).sort((a,b)=>a.date>b.date?1:-1);
+    const passados = events.filter(e=>e.date<today  && e.setlist?.length>0).sort((a,b)=>a.date>b.date?-1:1).slice(0,10);
+
+    async function salvarOrdem(nova) {
+        if (!eventoSel) return;
+        setSetlist(nova);
+        await db.collection("events").doc(eventoSel.id).update({
+            setlist: nova,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    function moverCima(idx) {
+        if (idx===0) return;
+        const nova=[...setlist];
+        [nova[idx-1],nova[idx]]=[nova[idx],nova[idx-1]];
+        salvarOrdem(nova);
+    }
+    function moverBaixo(idx) {
+        if (idx===setlist.length-1) return;
+        const nova=[...setlist];
+        [nova[idx],nova[idx+1]]=[nova[idx+1],nova[idx]];
+        salvarOrdem(nova);
+    }
+
+    const mesaUrl = eventoSel ? `${window.location.origin}${window.location.pathname}?mesa=${eventoSel.id}` : "";
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const inp  = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+
+    return (
+        <div>
+            <div style={{ marginBottom:6 }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Apresentação</div>
+                <div style={{ fontSize:13, color:"#AAA", marginTop:2 }}>Painel operacional para o dia do show — playbacks e setlist</div>
+            </div>
+
+            {/* Seleção de evento */}
+            <div style={{ ...card, marginTop:20 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:12 }}>Selecionar Evento</div>
+                <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+                    <select style={{ ...inp, flex:1, minWidth:200 }}
+                        value={eventoSel?.id||""}
+                        onChange={e=>{
+                            const ev = [...proximos,...passados].find(ev=>ev.id===e.target.value);
+                            setEventoSel(ev||null);
+                        }}>
+                        <option value="">Selecionar evento...</option>
+                        {proximos.length>0 && <optgroup label="PRÓXIMOS">
+                            {proximos.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                        </optgroup>}
+                        {passados.length>0 && <optgroup label="PASSADOS">
+                            {passados.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                        </optgroup>}
+                    </select>
+                </div>
+                {eventoSel && setlist.length===0 && (
+                    <div style={{ fontSize:12, color:"#E65100", marginTop:8 }}>Este evento não tem músicas no repertório. Adicione pelo módulo Agenda → editar evento.</div>
+                )}
+            </div>
+
+            {/* Mesa de Som */}
+            {eventoSel && mesaUrl && (
+                <div style={{ background:"#1A1D23", borderRadius:12, padding:"16px 20px", marginBottom:12 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                        <Icon name="monitor-speaker" size={16} color="#AAA" />
+                        <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>Mesa de Som — Painel do Sonoplasta</div>
+                    </div>
+                    <div style={{ fontSize:12, color:"#888", marginBottom:10 }}>Acesso público sem senha — envie este link para o sonoplasta no dia da apresentação.</div>
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                        <input readOnly value={mesaUrl} style={{ ...inp, flex:1, background:"#2A2D33", color:"#CCC", border:"1px solid #333" }} />
+                        <button onClick={()=>navigator.clipboard.writeText(mesaUrl).then(()=>alert("Link copiado!"))}
+                            style={{ padding:"10px 16px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Copiar</button>
+                        <a href={mesaUrl} target="_blank" rel="noreferrer"
+                            style={{ padding:"10px 16px", background:"#2A2D33", color:"#CCC", border:"1px solid #444", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>Abrir</a>
+                    </div>
+                </div>
+            )}
+
+            {/* Setlist + Player */}
+            {eventoSel && setlist.length>0 && (
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                    {/* Setlist */}
+                    <div style={card}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                            <Icon name="music" size={16} color={cor} />
+                            <div style={{ fontSize:14, fontWeight:700, color:cor }}>Setlist</div>
+                            <div style={{ fontSize:12, color:"#AAA" }}>({setlist.length} música{setlist.length!==1?"s":""})</div>
+                            <div style={{ fontSize:11, color:"#CCC", marginLeft:"auto" }}>↑↓ para reordenar</div>
+                        </div>
+                        {setlist.map((s,i)=>(
+                            <div key={i} onClick={()=>setTocando(s)}
+                                style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:8, marginBottom:6, cursor:"pointer", background: tocando?.id===s.id ? cor+"15" : "#F9F5F5", border: tocando?.id===s.id ? `1px solid ${cor}33` : "1px solid transparent", transition:"background 0.15s" }}>
+                                <span style={{ fontSize:13, color:cor, fontWeight:700, minWidth:22, textAlign:"center" }}>{i+1}</span>
+                                <div style={{ flex:1 }}>
+                                    <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{s.title}</div>
+                                    {s.compositor && <div style={{ fontSize:11, color:"#AAA" }}>{s.compositor}</div>}
+                                </div>
+                                <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                                    <button onClick={e=>{e.stopPropagation();moverCima(i);}}
+                                        style={{ background:"none", border:"none", cursor:"pointer", padding:2, color: i===0?"#EEE":"#888" }}>
+                                        <Icon name="chevron-up" size={14} color={i===0?"#EEE":"#888"} />
+                                    </button>
+                                    <button onClick={e=>{e.stopPropagation();moverBaixo(i);}}
+                                        style={{ background:"none", border:"none", cursor:"pointer", padding:2, color: i===setlist.length-1?"#EEE":"#888" }}>
+                                        <Icon name="chevron-down" size={14} color={i===setlist.length-1?"#EEE":"#888"} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Player */}
+                    <div style={card}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                            <Icon name="volume-2" size={16} color={cor} />
+                            <div style={{ fontSize:14, fontWeight:700, color:cor }}>Player</div>
+                        </div>
+                        {!tocando
+                            ? <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 20px", color:"#CCC", gap:12 }}>
+                                <Icon name="music" size={40} color="#EEE" />
+                                <div style={{ fontSize:13 }}>Clique em uma música para reproduzir</div>
+                              </div>
+                            : <div>
+                                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:4 }}>{tocando.title}</div>
+                                {tocando.compositor && <div style={{ fontSize:12, color:"#AAA", marginBottom:12 }}>{tocando.compositor}</div>}
+                                {(tocando.playback||tocando.audioOriginal)
+                                    ? <iframe src={(()=>{
+                                        const url = tocando.playback||tocando.audioOriginal;
+                                        const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                                        if (yt) return `https://www.youtube.com/embed/${yt[1]}?autoplay=1`;
+                                        const dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                        if (dr) return `https://drive.google.com/file/d/${dr[1]}/preview`;
+                                        return url;
+                                      })()} style={{ width:"100%", height:200, border:"none", borderRadius:8 }} allow="autoplay; fullscreen" title={tocando.title} />
+                                    : <div style={{ padding:"20px", background:"#F5F5F5", borderRadius:8, textAlign:"center", color:"#AAA", fontSize:13 }}>
+                                        Esta música não tem playback cadastrado.
+                                      </div>
+                                }
+                                {/* Próxima */}
+                                {setlist[setlist.findIndex(s=>s.id===tocando.id)+1] && (
+                                    <div style={{ marginTop:12, padding:"8px 12px", background:"#F9F5F5", borderRadius:8, display:"flex", alignItems:"center", gap:8 }}>
+                                        <Icon name="skip-forward" size={13} color="#AAA" />
+                                        <div style={{ fontSize:12, color:"#AAA" }}>A seguir: <span style={{ color:"#1A1D23", fontWeight:600 }}>{setlist[setlist.findIndex(s=>s.id===tocando.id)+1].title}</span></div>
+                                        <button onClick={()=>setTocando(setlist[setlist.findIndex(s=>s.id===tocando.id)+1])}
+                                            style={{ marginLeft:"auto", padding:"4px 10px", background:cor, color:"#fff", border:"none", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                            Próxima
+                                        </button>
+                                    </div>
+                                )}
+                              </div>
+                        }
+                    </div>
+                </div>
+            )}
+
+            {!eventoSel && (
+                <div style={{ ...card, textAlign:"center", padding:"48px 20px", color:"#CCC" }}>
+                    <Icon name="qr-code" size={48} color="#EEE" />
+                    <div style={{ marginTop:12, fontSize:15, fontWeight:600, color:"#CCC" }}>Selecione um evento acima</div>
+                    <div style={{ fontSize:13, marginTop:4 }}>Para gerenciar o setlist e playbacks da apresentação</div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -1664,7 +1887,7 @@ function App() {
         agenda:       <Agenda config={config} isAdmin={isAdmin} />,
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
         frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
-        apresentacao: <EmBreve label="Apresentação"       icon="mic" />,
+        apresentacao: <Apresentacao config={config} />,
         declaracao:   <EmBreve label="Declaração Digital" icon="file-text" />,
         relatorios:   <EmBreve label="Relatórios"         icon="chart-bar" />,
         config:       <Configuracoes config={config} save={save} />,
