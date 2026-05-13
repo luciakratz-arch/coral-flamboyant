@@ -3693,13 +3693,14 @@ function ModalNoticia({ noticia, onClose, config }) {
 }
 
 // ── ÁREA DO RH ────────────────────────────────────────────────────────────────
-function AreaRH({ config }) {
+function AreaRH({ config, abaInicial }) {
     const { data:members }     = useCollection("members");
     const { data:events }      = useCollection("events","date");
     const { data:frequencias } = useCollection("frequencias","dataHora");
     const { data:noticias }    = useCollection("noticias");
     const { data:relatorios }  = useCollection("relatorios_historico");
-    const [aba, setAba]        = useState("dashboard");
+    const [aba, setAba]        = useState(abaInicial||"dashboard");
+    useEffect(()=>{ if(abaInicial) setAba(abaInicial); },[abaInicial]);
     const [modalNoticia, setModalNoticia] = useState(null);
     const [textos, setTextos]  = useState({});
     const cor = config.corPrimaria||COR;
@@ -3790,15 +3791,7 @@ function AreaRH({ config }) {
             <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor, marginBottom:4 }}>RH — Pessoas e Cultura</div>
             <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Gestão de pessoas, comunicação e relatórios</div>
 
-            {/* Abas */}
-            <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
-                {abas.map(a=>(
-                    <button key={a.key} onClick={()=>setAba(a.key)}
-                        style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:20, border:`1px solid ${aba===a.key?cor:"#EEE"}`, background:aba===a.key?cor:"#fff", color:aba===a.key?"#fff":"#555", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-                        <Icon name={a.icon} size={14} color={aba===a.key?"#fff":"#888"} /> {a.label}
-                    </button>
-                ))}
-            </div>
+
 
             {/* DASHBOARD */}
             {aba==="dashboard" && <>
@@ -3984,7 +3977,10 @@ const NAV_ADMIN = [
     { key:"config",       label:"Configurações",      icon:"settings" },
 ];
 const NAV_RH = [
-    { key:"rh", label:"RH", icon:"briefcase" },
+    { key:"rh_dashboard",   label:"Dashboard",   icon:"bar-chart-2" },
+    { key:"rh_noticias",    label:"Notícias",     icon:"newspaper" },
+    { key:"rh_declaracoes", label:"Declarações",  icon:"file-text" },
+    { key:"rh_historico",   label:"Histórico",    icon:"clock" },
 ];
 
 const NAV_CORISTA = [
@@ -4009,7 +4005,7 @@ function App() {
     function handleLogin(u) {
         localStorage.setItem("cf_user", JSON.stringify(u));
         setUser(u);
-        setTab(u.isAdmin ? "painel" : u.role==="rh" ? "rh" : "inicio");
+        setTab(u.isAdmin ? "painel" : u.role==="rh" ? "rh_dashboard" : "inicio");
         // Registrar acesso do corista
         if (u.role === "corista" && u.name) {
             const agora = new Date();
@@ -4047,7 +4043,11 @@ function App() {
         apresentacao: <Apresentacao config={config} />,
         declaracao:   isAdmin ? <Declaracao config={config} /> : <MinhaDeclaracao user={user} config={config} />,
         relatorios:   <Relatorios config={config} />,
-        rh:           <AreaRH config={config} />,
+        rh:           <AreaRH config={config} abaInicial="dashboard" />,
+        rh_dashboard:   <AreaRH config={config} abaInicial="dashboard" />,
+        rh_noticias:    <AreaRH config={config} abaInicial="noticias" />,
+        rh_declaracoes: <AreaRH config={config} abaInicial="declaracoes" />,
+        rh_historico:   <AreaRH config={config} abaInicial="historico" />,
         config:       <Configuracoes config={config} save={save} />,
         inicio:       <PainelCorista user={user} config={config} />,
     };
