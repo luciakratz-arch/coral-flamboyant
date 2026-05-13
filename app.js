@@ -583,6 +583,248 @@ function Configuracoes({ config, save }) {
     );
 }
 
+
+// ── AGENDA ────────────────────────────────────────────────────────────────────
+const TIPOS_EVENTO   = ["Ensaio","Apresentação","Reunião","Gravação","Feriado Nacional","Feriado Local","Outro"];
+const STATUS_EVENTO  = ["Planejada","Confirmado","Cancelado","Reagendado","Suspenso"];
+const RECORRENCIAS   = ["Sem recorrência","Semanal","Quinzenal","Mensal"];
+const WEEKDAYS_PT    = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const STATUS_COLORS  = { Planejada:"#1565C0", Confirmado:"#2E7D32", Cancelado:"#B41020", Reagendado:"#E65100", Suspenso:"#7B1FA2" };
+
+function ModalEvento({ evento, onClose, config }) {
+    const cor = config.corPrimaria||COR;
+    const vazio = { title:"", date:todayStr(), tipo:"Ensaio", status:"Planejada", timeChegada:"", timeApresentacao:"", local:"", mapsUrl:"", notes:"", recorrencia:"Sem recorrência" };
+    const [form, setForm]         = useState(evento?{...vazio,...evento}:vazio);
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro]         = useState("");
+
+    async function salvar() {
+        if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
+        if (!form.date)         { setErro("Data é obrigatória.");   return; }
+        setSalvando(true);
+        const d = { title:form.title, date:form.date, tipo:form.tipo, status:form.status, timeChegada:form.timeChegada||"", timeApresentacao:form.timeApresentacao||"", local:form.local||"", mapsUrl:form.mapsUrl||"", notes:form.notes||"", recorrencia:form.recorrencia };
+        if (evento) {
+            await db.collection("events").doc(evento.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        } else {
+            // Gerar eventos recorrentes
+            const datas = [form.date];
+            if (form.recorrencia !== "Sem recorrência" && form.date) {
+                const base = new Date(form.date + "T12:00:00");
+                const dias = form.recorrencia==="Semanal"?7:form.recorrencia==="Quinzenal"?14:30;
+                for (let i=1; i<=11; i++) {
+                    const nova = new Date(base);
+                    nova.setDate(nova.getDate() + dias*i);
+                    datas.push(nova.toISOString().split("T")[0]);
+                }
+            }
+            for (const dt of datas) {
+                await db.collection("events").add({...d, date:dt, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            }
+        }
+        setSalvando(false);
+        onClose();
+    }
+
+    async function excluir() {
+        if (!window.confirm("Excluir este evento?")) return;
+        await db.collection("events").doc(evento.id).delete();
+        onClose();
+    }
+
+    const inp = { width:"100%", padding:"11px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#888", marginBottom:5 };
+    const g2  = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#FAFAFA", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:640, maxHeight:"92vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>{evento?"Editar Evento":"Adicionar Evento"}</div>
+                    <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="x" size={16} color="#666" />
+                    </button>
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Título *</label>
+                    <input style={{ ...inp, borderColor: erro&&!form.title?cor:"#E8E0E0" }} value={form.title} onChange={e=>{setForm(f=>({...f,title:e.target.value}));setErro("");}} autoFocus />
+                    {erro && <div style={{ fontSize:12, color:cor, marginTop:4 }}>{erro}</div>}
+                </div>
+
+                <div style={g2}>
+                    <div><label style={lbl}>Data *</label><input type="date" style={inp} value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} /></div>
+                    <div><label style={lbl}>Tipo</label>
+                        <select style={inp} value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))}>
+                            {TIPOS_EVENTO.map(t=><option key={t}>{t}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Status de Planejamento</label>
+                    <select style={inp} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+                        {STATUS_EVENTO.map(s=><option key={s}>{s}</option>)}
+                    </select>
+                </div>
+
+                <div style={g2}>
+                    <div><label style={lbl}>Horário de Chegada</label><input type="time" style={inp} value={form.timeChegada||""} onChange={e=>setForm(f=>({...f,timeChegada:e.target.value}))} /></div>
+                    <div><label style={lbl}>Horário Apresentação</label><input type="time" style={inp} value={form.timeApresentacao||""} onChange={e=>setForm(f=>({...f,timeApresentacao:e.target.value}))} /></div>
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Local</label>
+                    <input style={inp} value={form.local||""} onChange={e=>setForm(f=>({...f,local:e.target.value}))} />
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Link Google Maps</label>
+                    <input style={inp} value={form.mapsUrl||""} onChange={e=>setForm(f=>({...f,mapsUrl:e.target.value}))} placeholder="https://maps.google.com/..." />
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Observações</label>
+                    <textarea style={{ ...inp, minHeight:80, resize:"vertical" }} value={form.notes||""} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Informações adicionais..." />
+                </div>
+
+                {!evento && <div style={{ marginBottom:20, paddingTop:16, borderTop:"1px solid #EEE" }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Recorrência</div>
+                    <div><label style={lbl}>Repetir evento</label>
+                        <select style={inp} value={form.recorrencia} onChange={e=>setForm(f=>({...f,recorrencia:e.target.value}))}>
+                            {RECORRENCIAS.map(r=><option key={r}>{r}</option>)}
+                        </select>
+                    </div>
+                    {form.recorrencia!=="Sem recorrência" && <div style={{ fontSize:12, color:"#AAA", marginTop:6 }}>Serão criados 12 eventos a partir desta data.</div>}
+                </div>}
+
+                <div style={{ display:"flex", gap:10 }}>
+                    {evento && <button onClick={excluir} style={{ padding:"12px 16px", background:"#FFF0F0", color:"#B41020", border:"1px solid #F5DADA", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Excluir</button>}
+                    <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+                    <button onClick={salvar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                        {salvando?"Salvando...":(evento?"Salvar":"Adicionar")}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Agenda({ config, isAdmin }) {
+    const { data:events, loading } = useCollection("events","date");
+    const [mes, setMes]     = useState(new Date().getMonth());
+    const [ano, setAno]     = useState(new Date().getFullYear());
+    const [modal, setModal] = useState(null);
+    const [detalhe, setDetalhe] = useState(null);
+    const cor = config.corPrimaria||COR;
+
+    if (loading) return <Spinner />;
+
+    function navMes(dir) {
+        let nm=mes+dir, na=ano;
+        if (nm>11){nm=0;na++;}
+        if (nm<0){nm=11;na--;}
+        setMes(nm); setAno(na);
+    }
+
+    const eventosMes = events
+        .filter(e => { if (!e.date) return false; const [y,m]=e.date.split("-"); return parseInt(m)-1===mes && parseInt(y)===ano; })
+        .sort((a,b)=>a.date>b.date?1:-1);
+
+    const isFeriado = (e) => e.tipo==="Feriado Nacional"||e.tipo==="Feriado Local";
+
+    return (
+        <div>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Agenda</div>
+                {isAdmin && <button onClick={()=>setModal("novo")}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:cor, border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
+                    <Icon name="plus" size={14} color="#fff" /> Adicionar Evento
+                </button>}
+            </div>
+
+            {/* Navegação mês */}
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"14px 20px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                <button onClick={()=>navMes(-1)} style={{ width:36, height:36, border:"1px solid #EEE", borderRadius:8, background:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <Icon name="chevron-left" size={16} color="#666" />
+                </button>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:"#1A1D23" }}>
+                    {MONTHS_PT[mes].charAt(0).toUpperCase()+MONTHS_PT[mes].slice(1)} {ano}
+                </div>
+                <button onClick={()=>navMes(1)} style={{ width:36, height:36, border:"1px solid #EEE", borderRadius:8, background:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <Icon name="chevron-right" size={16} color="#666" />
+                </button>
+            </div>
+
+            {/* Lista de eventos */}
+            {eventosMes.length===0
+                ? <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"32px", textAlign:"center", color:"#CCC", fontSize:14, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                    Nenhum evento em {MONTHS_PT[mes]}.
+                  </div>
+                : eventosMes.map(e => {
+                    const dt     = new Date(e.date+"T12:00:00");
+                    const dia    = dt.getDate();
+                    const semana = WEEKDAYS_PT[dt.getDay()];
+                    const feriado= isFeriado(e);
+                    const stColor= STATUS_COLORS[e.status]||"#888";
+
+                    return (
+                        <div key={e.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px", marginBottom:10, boxShadow:"0 1px 4px rgba(0,0,0,0.04)", display:"flex", gap:16, alignItems:"flex-start" }}>
+                            {/* Data */}
+                            <div style={{ minWidth:52, textAlign:"center", borderRight:"1px solid #F0EAEA", paddingRight:16 }}>
+                                <div style={{ fontSize:11, fontWeight:700, color:feriado?"#1565C0":cor, textTransform:"uppercase", letterSpacing:0.8 }}>
+                                    {MONTHS_SHORT[mes]}
+                                </div>
+                                <div style={{ fontSize:28, fontWeight:700, color:feriado?"#1565C0":cor, lineHeight:1.1 }}>{dia}</div>
+                                <div style={{ fontSize:11, color:"#AAA", marginTop:2 }}>{semana}</div>
+                            </div>
+
+                            {/* Conteúdo */}
+                            <div style={{ flex:1 }}>
+                                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom: feriado?0:8 }}>
+                                    {feriado && <span style={{ fontSize:16 }}>🎉</span>}
+                                    <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23" }}>{e.title}</div>
+                                    {e.tipo && <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:"#F0EAE8", color:"#888", fontWeight:600 }}>{e.tipo}</span>}
+                                    {!feriado && e.status && <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:stColor+"18", color:stColor, fontWeight:700 }}>{e.status}</span>}
+                                </div>
+                                {!feriado && <>
+                                    {e.timeChegada && <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#666", marginBottom:4 }}>
+                                        <Icon name="clock" size={13} color="#AAA" /> Chegada: {e.timeChegada}
+                                        {e.timeApresentacao && ` · Apresentação: ${e.timeApresentacao}`}
+                                    </div>}
+                                    {e.local && <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#666", marginBottom:4 }}>
+                                        <Icon name="map-pin" size={13} color="#AAA" />
+                                        {e.mapsUrl ? <a href={e.mapsUrl} target="_blank" rel="noreferrer" style={{ color:cor, textDecoration:"none" }}>{e.local}</a> : e.local}
+                                    </div>}
+                                    {e.notes && <div style={{ fontSize:12, color:"#AAA", marginTop:4, fontStyle:"italic" }}>{e.notes}</div>}
+                                </>}
+                            </div>
+
+                            {/* Ações admin */}
+                            {isAdmin && !feriado && (
+                                <div style={{ display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
+                                    <button onClick={()=>setModal(e)}
+                                        style={{ padding:"7px 14px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                        Detalhes
+                                    </button>
+                                    <button onClick={async()=>{ if(window.confirm("Excluir evento?")) await db.collection("events").doc(e.id).delete(); }}
+                                        style={{ width:32, height:32, background:"#FFF0F0", border:"1px solid #F5DADA", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                        <Icon name="trash-2" size={14} color="#B41020" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            }
+
+            {modal && <ModalEvento evento={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -642,7 +884,7 @@ function App() {
         integrantes:  <Integrantes config={config} />,
         musicas:      <EmBreve label="Músicas"            icon="music" />,
         estudos:      <EmBreve label="Sala de Estudos"    icon="graduation-cap" />,
-        agenda:       <EmBreve label="Agenda"             icon="calendar" />,
+        agenda:       <Agenda config={config} isAdmin={isAdmin} />,
         avisos:       <EmBreve label="Avisos"             icon="megaphone" />,
         frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
         apresentacao: <EmBreve label="Apresentação"       icon="mic" />,
