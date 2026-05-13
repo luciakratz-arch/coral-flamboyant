@@ -1936,6 +1936,317 @@ function Apresentacao({ config }) {
 }
 
 
+
+// ── RELATÓRIOS ────────────────────────────────────────────────────────────────
+function Relatorios({ config }) {
+    const { data:events }  = useCollection("events","date");
+    const { data:members } = useCollection("members");
+    const { data:songs }   = useCollection("songs");
+    const cor = config.corPrimaria||COR;
+
+    const [dataInicio, setDataInicio] = useState(new Date().getFullYear()+"-01-01");
+    const [dataFim, setDataFim]       = useState(todayStr());
+    const [eventoFiltro, setEventoFiltro] = useState("todos");
+    const [textos, setTextos]         = useState({});
+    const [editTextos, setEditTextos] = useState(false);
+    const [formTextos, setFormTextos] = useState({});
+    const [salvandoTextos, setSalvandoTextos] = useState(false);
+
+    // Carregar textos qualitativos do Firebase
+    useEffect(()=>{
+        db.collection("config").doc("relatorio").get().then(doc=>{
+            if (doc.exists) { setTextos(doc.data()); setFormTextos(doc.data()); }
+        });
+    },[]);
+
+    async function salvarTextos() {
+        setSalvandoTextos(true);
+        await db.collection("config").doc("relatorio").set(formTextos, {merge:true});
+        setTextos(formTextos);
+        setSalvandoTextos(false);
+        setEditTextos(false);
+    }
+
+    // Filtrar eventos por período
+    const eventosPeriodo = events.filter(e => e.date >= dataInicio && e.date <= dataFim);
+    const eventosFiltrados = eventoFiltro==="todos" ? eventosPeriodo : eventosPeriodo.filter(e=>e.id===eventoFiltro);
+
+    const ativos = members.filter(m=>m.active);
+    const apresentacoes = eventosFiltrados.filter(e=>e.tipo==="Apresentação");
+
+    // Contagem por tipo
+    const porTipo = {};
+    eventosFiltrados.forEach(e=>{ porTipo[e.tipo||"Outro"]=(porTipo[e.tipo||"Outro"]||0)+1; });
+
+    // Contagem por status
+    const porStatus = {};
+    eventosFiltrados.forEach(e=>{ porStatus[e.status||"—"]=(porStatus[e.status||"—"]||0)+1; });
+
+    const statusColors = { Confirmado:"#2E7D32", Planejada:"#1565C0", Cancelado:"#B41020", Reagendado:"#E65100", Suspenso:"#7B1FA2" };
+
+    const sigLucia  = textos.sigLucia  || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+    const sigMaestro= textos.sigMaestro|| "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+
+    function gerarPDF() {
+        const nomeApp   = config.nomeApp   || "Flamboyant Coral";
+        const logoUrl   = config.logoUrl   || LOGO_URL;
+        const cidade    = textos.cidade    || "Goiânia – GO";
+        const maestro   = textos.maestro   || "Maestro";
+        const produtora = textos.produtora || "Lucia Kratz";
+        const hoje = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodoFmt = `${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+
+        const linhasAtiv = eventosFiltrados.map((e,i)=>`
+            <tr>
+                <td>${i+1}</td>
+                <td>${e.date ? new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR") : ""}</td>
+                <td>${e.title||""}</td>
+                <td>${e.tipo||""}</td>
+                <td>${e.status||""}</td>
+                <td>${e.local||""}</td>
+            </tr>`).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin:0; padding:0; }
+  @media print { @page { margin: 1.5cm; } }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${cor}; padding-bottom:12px; margin-bottom:20px; }
+  .logo { width:50px; height:50px; object-fit:contain; }
+  .titulo { text-align:center; margin:20px 0 6px; font-size:16px; font-weight:bold; color:${cor}; text-transform:uppercase; letter-spacing:2px; }
+  .periodo { text-align:center; font-size:11px; color:#666; margin-bottom:20px; }
+  .cards { display:flex; gap:12px; margin-bottom:20px; }
+  .card { flex:1; border:1px solid #EEE; border-radius:6px; padding:12px; text-align:center; }
+  .card-num { font-size:24px; font-weight:bold; color:${cor}; }
+  .card-lbl { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:1px; }
+  .secao { font-size:11px; font-weight:bold; color:${cor}; text-transform:uppercase; letter-spacing:2px; margin:20px 0 10px; border-bottom:1px solid #EEE; padding-bottom:4px; }
+  .bloco { border-left:3px solid ${cor}; padding:8px 12px; margin-bottom:10px; background:#FAFAFA; border-radius:0 4px 4px 0; }
+  .bloco-titulo { font-size:11px; font-weight:bold; color:${cor}; margin-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  th { background:${cor}; color:#fff; padding:6px 8px; text-align:left; font-size:10px; text-transform:uppercase; }
+  td { padding:6px 8px; border-bottom:1px solid #EEE; font-size:11px; }
+  .assinaturas { display:flex; justify-content:space-around; margin-top:40px; text-align:center; }
+  .assin { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .assin img { height:50px; object-fit:contain; }
+  .assin-nome { font-weight:bold; font-size:12px; }
+  .assin-cargo { font-size:10px; color:#888; }
+  .rodape { text-align:center; font-size:10px; color:#AAA; margin-top:30px; border-top:1px solid #EEE; padding-top:8px; }
+  .tipo-linha { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #F0F0F0; }
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" class="logo" />
+  <div style="text-align:right; font-size:11px; color:#666">
+    <strong>${nomeApp}</strong><br>${cidade}<br>${maestro ? "Maestro: "+maestro : ""}
+  </div>
+</div>
+<div class="titulo">Relatório de Atividades</div>
+<div class="periodo">Período: ${periodoFmt}</div>
+<div class="cards">
+  <div class="card"><div class="card-num">${eventosFiltrados.length}</div><div class="card-lbl">Total atividades</div></div>
+  <div class="card"><div class="card-num">${ativos.length}</div><div class="card-lbl">Integrantes ativos</div></div>
+  <div class="card"><div class="card-num">${apresentacoes.length}</div><div class="card-lbl">Apresentações</div></div>
+</div>
+<div class="secao">Distribuição por tipo</div>
+${Object.entries(porTipo).map(([k,v])=>`<div class="tipo-linha"><span>${k}</span><span style="font-weight:bold;color:${cor}">${v}</span></div>`).join("")}
+${textos.sobreProjeto||textos.curriculoMaestro||textos.equipe ? `
+<div class="secao">Informações do Projeto</div>
+${textos.sobreProjeto?`<div class="bloco"><div class="bloco-titulo">Sobre o Projeto</div><p>${textos.sobreProjeto}</p></div>`:""}
+${textos.curriculoMaestro?`<div class="bloco"><div class="bloco-titulo">Currículo do Maestro</div><p>${textos.curriculoMaestro}</p></div>`:""}
+${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produção</div><p>${textos.equipe}</p></div>`:""}
+`:""}
+<div class="secao">Detalhamento das Atividades</div>
+<table><thead><tr><th>#</th><th>Data</th><th>Título</th><th>Tipo</th><th>Status</th><th>Local</th></tr></thead>
+<tbody>${linhasAtiv||"<tr><td colspan='6' style='text-align:center;color:#AAA'>Nenhuma atividade no período</td></tr>"}</tbody></table>
+<div class="assinaturas">
+  <div class="assin">
+    ${sigMaestro?`<img src="${sigMaestro}" />`:"<div style='height:50px'></div>"}
+    <div style="border-top:1px solid #333;padding-top:4px;min-width:160px">
+      <div class="assin-nome">${maestro}</div>
+      <div class="assin-cargo">Maestro – ${nomeApp}</div>
+    </div>
+  </div>
+  <div class="assin">
+    ${sigLucia?`<img src="${sigLucia}" />`:"<div style='height:50px'></div>"}
+    <div style="border-top:1px solid #333;padding-top:4px;min-width:160px">
+      <div class="assin-nome">${produtora}</div>
+      <div class="assin-cargo">Produtora – ${nomeApp}</div>
+    </div>
+  </div>
+</div>
+<div class="rodape">Relatório gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+</body></html>`;
+
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
+    const card  = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const inp   = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl   = { display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 };
+    const ta    = { width:"100%", padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA", resize:"vertical", minHeight:80 };
+
+    return (
+        <div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor, marginBottom:4 }}>Relatórios</div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Relatório de atividades e gestão do coral</div>
+
+            {/* Período */}
+            <div style={card}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                    <Icon name="calendar" size={16} color={cor} />
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Período do relatório</div>
+                </div>
+                <div style={{ display:"flex", gap:16, flexWrap:"wrap", alignItems:"flex-end" }}>
+                    <div><label style={lbl}>Data início</label><input type="date" style={inp} value={dataInicio} onChange={e=>setDataInicio(e.target.value)} /></div>
+                    <div><label style={lbl}>Data fim</label><input type="date" style={inp} value={dataFim} onChange={e=>setDataFim(e.target.value)} /></div>
+                    <div style={{ flex:1, minWidth:200 }}>
+                        <label style={lbl}>Filtrar por evento</label>
+                        <select style={{ ...inp, width:"100%" }} value={eventoFiltro} onChange={e=>setEventoFiltro(e.target.value)}>
+                            <option value="todos">Todos os eventos</option>
+                            {eventosPeriodo.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Métricas */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:12 }}>
+                {[
+                    { label:"Total atividades", value:eventosFiltrados.length, icon:"calendar", color:cor },
+                    { label:"Integrantes ativos", value:ativos.length, icon:"users", color:"#2E7D32" },
+                    { label:"Apresentações", value:apresentacoes.length, icon:"mic", color:cor },
+                ].map(m=>(
+                    <div key={m.label} style={{ ...card, marginBottom:0, textAlign:"center", padding:"16px" }}>
+                        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:6 }}>
+                            <Icon name={m.icon} size={16} color={m.color} />
+                        </div>
+                        <div style={{ fontSize:28, fontWeight:700, color:m.color, lineHeight:1 }}>{m.value}</div>
+                        <div style={{ fontSize:12, color:"#AAA", marginTop:4 }}>{m.label}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Gráficos simples */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+                <div style={card}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Atividades por tipo</div>
+                    {Object.entries(porTipo).length === 0
+                        ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Sem atividades no período</div>
+                        : Object.entries(porTipo).map(([tipo, qtd])=>{
+                            const max = Math.max(...Object.values(porTipo));
+                            return (
+                                <div key={tipo} style={{ marginBottom:10 }}>
+                                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                                        <span style={{ fontSize:12, color:"#555" }}>{tipo}</span>
+                                        <span style={{ fontSize:12, fontWeight:700, color:cor }}>{qtd}</span>
+                                    </div>
+                                    <div style={{ height:8, background:"#F0EAEA", borderRadius:4, overflow:"hidden" }}>
+                                        <div style={{ width:`${(qtd/max)*100}%`, height:"100%", background:cor, borderRadius:4 }} />
+                                    </div>
+                                </div>
+                            );
+                        })
+                    }
+                </div>
+                <div style={card}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Distribuição por status</div>
+                    {Object.entries(porStatus).length === 0
+                        ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Sem atividades no período</div>
+                        : Object.entries(porStatus).map(([status, qtd])=>(
+                            <div key={status} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:"1px solid #F5F0F0" }}>
+                                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                    <div style={{ width:10, height:10, borderRadius:"50%", background:statusColors[status]||"#888" }} />
+                                    <span style={{ fontSize:13, color:"#555" }}>{status}</span>
+                                </div>
+                                <span style={{ fontSize:13, fontWeight:700, color:statusColors[status]||"#888" }}>{qtd}</span>
+                            </div>
+                        ))
+                    }
+                </div>
+            </div>
+
+            {/* Texto qualitativo */}
+            <div style={card}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <Icon name="pencil" size={15} color={cor} />
+                        <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Texto Qualitativo do Relatório</div>
+                    </div>
+                    <button onClick={()=>{ setEditTextos(v=>!v); setFormTextos({...textos}); }}
+                        style={{ padding:"6px 14px", background:"#fff", border:"1px solid #EEE", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:"#666" }}>
+                        {editTextos ? "Cancelar" : "Editar textos"}
+                    </button>
+                </div>
+
+                {!editTextos ? (
+                    <>
+                        {textos.sobreProjeto && <div style={{ marginBottom:14 }}><div style={{ fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Sobre o Projeto</div><div style={{ fontSize:13, color:"#555", lineHeight:1.6 }}>{textos.sobreProjeto}</div></div>}
+                        {textos.curriculoMaestro && <div style={{ marginBottom:14 }}><div style={{ fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Currículo do Maestro</div><div style={{ fontSize:13, color:"#555", lineHeight:1.6 }}>{textos.curriculoMaestro}</div></div>}
+                        {textos.equipe && <div style={{ marginBottom:14 }}><div style={{ fontSize:11, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Equipe de Produção</div><div style={{ fontSize:13, color:"#555", lineHeight:1.6 }}>{textos.equipe}</div></div>}
+                        {!textos.sobreProjeto && !textos.curriculoMaestro && !textos.equipe && <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Clique em "Editar textos" para preencher.</div>}
+                    </>
+                ) : (
+                    <>
+                        <div style={{ marginBottom:14 }}><label style={lbl}>Sobre o Projeto</label><textarea style={ta} value={formTextos.sobreProjeto||""} onChange={e=>setFormTextos(f=>({...f,sobreProjeto:e.target.value}))} /></div>
+                        <div style={{ marginBottom:14 }}><label style={lbl}>Currículo do Maestro</label><textarea style={ta} value={formTextos.curriculoMaestro||""} onChange={e=>setFormTextos(f=>({...f,curriculoMaestro:e.target.value}))} /></div>
+                        <div style={{ marginBottom:14 }}><label style={lbl}>Equipe de Produção</label><textarea style={ta} value={formTextos.equipe||""} onChange={e=>setFormTextos(f=>({...f,equipe:e.target.value}))} /></div>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+                            <div><label style={lbl}>Nome do Maestro</label><input style={{ ...inp, width:"100%" }} value={formTextos.maestro||""} onChange={e=>setFormTextos(f=>({...f,maestro:e.target.value}))} placeholder="Ex: Paulo Sergio Motta" /></div>
+                            <div><label style={lbl}>Nome da Produtora</label><input style={{ ...inp, width:"100%" }} value={formTextos.produtora||""} onChange={e=>setFormTextos(f=>({...f,produtora:e.target.value}))} placeholder="Ex: Lucia Kratz" /></div>
+                        </div>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+                            <div><label style={lbl}>Cidade</label><input style={{ ...inp, width:"100%" }} value={formTextos.cidade||""} onChange={e=>setFormTextos(f=>({...f,cidade:e.target.value}))} placeholder="Ex: Goiânia – GO" /></div>
+                        </div>
+                        <div style={{ marginBottom:14 }}>
+                            <label style={lbl}>URL assinatura — Lucia Kratz</label>
+                            <input style={{ ...inp, width:"100%" }} value={formTextos.sigLucia||""} onChange={e=>setFormTextos(f=>({...f,sigLucia:e.target.value}))} placeholder="https://raw.githubusercontent.com/.../lucia-sig.png" />
+                            {(formTextos.sigLucia||sigLucia) && <img src={formTextos.sigLucia||sigLucia} alt="Assinatura Lucia" style={{ maxHeight:40, marginTop:8, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />}
+                        </div>
+                        <div style={{ marginBottom:20 }}>
+                            <label style={lbl}>URL assinatura — Maestro</label>
+                            <input style={{ ...inp, width:"100%" }} value={formTextos.sigMaestro||""} onChange={e=>setFormTextos(f=>({...f,sigMaestro:e.target.value}))} placeholder="https://raw.githubusercontent.com/.../paulo-sig.png" />
+                            {(formTextos.sigMaestro||sigMaestro) && <img src={formTextos.sigMaestro||sigMaestro} alt="Assinatura Maestro" style={{ maxHeight:40, marginTop:8, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />}
+                        </div>
+                        <button onClick={salvarTextos} disabled={salvandoTextos} style={{ padding:"11px 24px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvandoTextos?0.7:1 }}>
+                            {salvandoTextos?"Salvando...":"Salvar textos"}
+                        </button>
+                    </>
+                )}
+            </div>
+
+            {/* Lista de atividades */}
+            <div style={card}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>
+                        Atividades no período <span style={{ fontSize:13, color:"#AAA", fontWeight:400 }}>({eventosFiltrados.length})</span>
+                    </div>
+                    <button onClick={gerarPDF}
+                        style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 18px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        <Icon name="printer" size={14} color="#fff" /> Gerar PDF
+                    </button>
+                </div>
+                {eventosFiltrados.length === 0
+                    ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma atividade no período selecionado.</div>
+                    : eventosFiltrados.sort((a,b)=>a.date>b.date?1:-1).map((e,i)=>(
+                        <div key={e.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid #F5F0F0" }}>
+                            <span style={{ fontSize:12, color:"#AAA", minWidth:20 }}>{i+1}</span>
+                            <span style={{ fontSize:12, color:"#888", minWidth:80 }}>{e.date ? new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR") : ""}</span>
+                            <div style={{ flex:1 }}>
+                                <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{e.title}</div>
+                                {e.local && <div style={{ fontSize:11, color:"#AAA" }}>{e.local}</div>}
+                            </div>
+                            <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:"#F0EAEA", color:cor, fontWeight:600 }}>{e.tipo}</span>
+                            <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:(statusColors[e.status]||"#888")+"18", color:statusColors[e.status]||"#888", fontWeight:600 }}>{e.status}</span>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -2003,7 +2314,7 @@ function App() {
         frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
         apresentacao: <Apresentacao config={config} />,
         declaracao:   <EmBreve label="Declaração Digital" icon="file-text" />,
-        relatorios:   <EmBreve label="Relatórios"         icon="chart-bar" />,
+        relatorios:   <Relatorios config={config} />,
         config:       <Configuracoes config={config} save={save} />,
     };
 
