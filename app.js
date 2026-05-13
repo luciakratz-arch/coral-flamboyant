@@ -2333,6 +2333,8 @@ ${blocosPresenca?`<div class="secao">Listas de Presença por Evento</div>${bloco
         win.document.write(html);
         win.document.close();
         setTimeout(()=>win.print(), 800);
+        // Salvar no histórico
+        db.collection("relatorios_historico").add({ tipo:"Relatório Completo", periodo:`${dataInicio} a ${dataFim}`, geradoEm:firebase.firestore.FieldValue.serverTimestamp(), geradoPor:"Gestor" });
     }
 
     function gerarPDF() {
@@ -3254,6 +3256,7 @@ function PainelCorista({ user, config }) {
     const { data:avisos }  = useCollection("avisos");
     const { data:events }  = useCollection("events","date");
     const { data:songs }   = useCollection("songs");
+    const { data:noticias } = useCollection("noticias");
     const [mes, setMes]    = useState(new Date().getMonth());
     const [ano, setAno]    = useState(new Date().getFullYear());
     const [confirmacoes, setConfirmacoes] = useState({});
@@ -3337,6 +3340,24 @@ function PainelCorista({ user, config }) {
                         </div>
                     );
                 })}
+            </>}
+
+            {/* Notícias do Coral */}
+            {noticias.length>0 && <>
+                <div style={{ display:"flex", alignItems:"center", gap:8, margin:"20px 0 12px" }}>
+                    <Icon name="newspaper" size={16} color={cor} />
+                    <div style={{ fontSize:12, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1 }}>Galeria do Coral</div>
+                </div>
+                {noticias.slice(0,3).map(n=>(
+                    <div key={n.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", marginBottom:10, overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                        {n.imageUrl && <img src={n.imageUrl} alt="" style={{ width:"100%", height:140, objectFit:"cover" }} onError={e=>e.target.style.display="none"} />}
+                        <div style={{ padding:"12px 16px" }}>
+                            <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:4 }}>{n.titulo}</div>
+                            <div style={{ fontSize:13, color:"#555", lineHeight:1.5 }}>{n.texto}</div>
+                            {n.createdAt?.seconds && <div style={{ fontSize:11, color:"#AAA", marginTop:6 }}>{new Date(n.createdAt.seconds*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"})}</div>}
+                        </div>
+                    </div>
+                ))}
             </>}
 
             {/* Agenda do mês */}
@@ -3578,6 +3599,353 @@ function MinhaDeclaracao({ user, config }) {
 }
 
 
+
+// ── NOTÍCIAS / BLOG ───────────────────────────────────────────────────────────
+function ModalNoticia({ noticia, onClose, config }) {
+    const cor = config.corPrimaria||COR;
+    const vazio = { titulo:"", texto:"", imageUrl:"", categoria:"Geral" };
+    const [form, setForm]         = useState(noticia?{...vazio,...noticia}:vazio);
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro]         = useState("");
+
+    async function salvar() {
+        if (!form.titulo.trim()) { setErro("Título é obrigatório."); return; }
+        if (!form.texto.trim())  { setErro("Texto é obrigatório."); return; }
+        setSalvando(true);
+        const d = { titulo:form.titulo, texto:form.texto, imageUrl:form.imageUrl||"", categoria:form.categoria, createdAt: noticia ? noticia.createdAt : firebase.firestore.FieldValue.serverTimestamp() };
+        if (noticia) await db.collection("noticias").doc(noticia.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        else await db.collection("noticias").add(d);
+        setSalvando(false);
+        onClose();
+    }
+
+    async function excluir() {
+        if (!window.confirm("Excluir esta notícia?")) return;
+        await db.collection("noticias").doc(noticia.id).delete();
+        onClose();
+    }
+
+    const inp = { width:"100%", padding:"11px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#888", marginBottom:5 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#FAFAFA", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:640, maxHeight:"92vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>{noticia?"Editar Notícia":"Nova Notícia"}</div>
+                    <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="x" size={16} color="#666" />
+                    </button>
+                </div>
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Título *</label>
+                    <input style={inp} value={form.titulo} onChange={e=>{setForm(f=>({...f,titulo:e.target.value}));setErro("");}} autoFocus />
+                    {erro && <div style={{ fontSize:12, color:cor, marginTop:4 }}>{erro}</div>}
+                </div>
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Categoria</label>
+                    <select style={inp} value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
+                        {["Geral","Apresentação","Ensaio","Conquista","Comunicado","Evento"].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                </div>
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>URL da imagem (opcional)</label>
+                    <input style={inp} value={form.imageUrl||""} onChange={e=>setForm(f=>({...f,imageUrl:e.target.value}))} placeholder="https://..." />
+                </div>
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Texto *</label>
+                    <textarea style={{ ...inp, minHeight:140, resize:"vertical" }} value={form.texto} onChange={e=>{setForm(f=>({...f,texto:e.target.value}));setErro("");}} />
+                </div>
+                <div style={{ display:"flex", gap:10 }}>
+                    {noticia && <button onClick={excluir} style={{ padding:"12px 16px", background:"#FFF0F0", color:"#B41020", border:"1px solid #F5DADA", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Excluir</button>}
+                    <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+                    <button onClick={salvar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                        {salvando?"Salvando...":(noticia?"Salvar":"Publicar")}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── ÁREA DO RH ────────────────────────────────────────────────────────────────
+function AreaRH({ config }) {
+    const { data:members }     = useCollection("members");
+    const { data:events }      = useCollection("events","date");
+    const { data:frequencias } = useCollection("frequencias","dataHora");
+    const { data:noticias }    = useCollection("noticias");
+    const { data:relatorios }  = useCollection("relatorios_historico");
+    const [aba, setAba]        = useState("dashboard");
+    const [modalNoticia, setModalNoticia] = useState(null);
+    const [textos, setTextos]  = useState({});
+    const cor = config.corPrimaria||COR;
+    const today = todayStr();
+
+    useEffect(()=>{
+        db.collection("config").doc("relatorio").get().then(doc=>{ if(doc.exists) setTextos(doc.data()); });
+    },[]);
+
+    const ativos      = members.filter(m=>m.active);
+    const inativos    = members.filter(m=>!m.active);
+    const proxEventos = events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+    const currentMonth= new Date().getMonth()+1;
+    const aniversarios= ativos.filter(m=>m.birthday&&parseInt(m.birthday.split("-")[1])===currentMonth);
+
+    // Por naipe
+    const naipes = {};
+    ativos.forEach(m=>{ const n=m.voice||"Outro"; naipes[n]=(naipes[n]||0)+1; });
+    const naipeColors = { Soprano:cor, Contralto:"#7B1FA2", "Mezzo-soprano":"#C2185B", Alto:"#E65100", Tenor:"#1565C0", Barítono:"#4527A0", Baixo:"#1B5E20", Outro:"#888" };
+
+    // Frequência por corista (últimos 30 dias)
+    const hoje30 = new Date(); hoje30.setDate(hoje30.getDate()-30);
+    const trintaStr = hoje30.toISOString().split("T")[0];
+    const freqMap = {};
+    frequencias.forEach(f=>{ if(f.membroNome) freqMap[f.membroNome]=(freqMap[f.membroNome]||0)+1; });
+    const freqLista = Object.entries(freqMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxFreq = Math.max(...freqLista.map(([,v])=>v),1);
+
+    // Confirmações
+    const [confirmacoes, setConfirmacoes] = useState([]);
+    useEffect(()=>{ db.collection("confirmacoes").onSnapshot(snap=>setConfirmacoes(snap.docs.map(d=>({id:d.id,...d.data()})))); },[]);
+    const vaiParticipiar = confirmacoes.filter(c=>c.status==="vou").length;
+    const naoVai = confirmacoes.filter(c=>c.status==="nao").length;
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+
+    const abas = [
+        { key:"dashboard", label:"Dashboard",   icon:"bar-chart-2" },
+        { key:"noticias",  label:"Notícias",     icon:"newspaper" },
+        { key:"declaracoes",label:"Declarações", icon:"file-text" },
+        { key:"historico", label:"Histórico",    icon:"clock" },
+    ];
+
+    // ── DECLARAÇÕES POR CORISTA ──
+    const [coristaDecl, setCoristaDecl] = useState("");
+    const [dataInicio, setDataInicio]   = useState(new Date().getFullYear()+"-01-01");
+    const [dataFim, setDataFim]         = useState(todayStr());
+    const coristaAtual = members.find(m=>m.id===coristaDecl);
+    const freqCorista  = frequencias.filter(f=>f.membroId===coristaDecl&&f.eventoData>=dataInicio&&f.eventoData<=dataFim).sort((a,b)=>a.eventoData>b.eventoData?1:-1);
+
+    function gerarDeclCorista() {
+        if (!coristaAtual||freqCorista.length===0) return;
+        const nomeApp=config.nomeApp||"Flamboyant Coral", logoUrl=config.logoUrl||LOGO_URL;
+        const maestro=textos.maestro||"Maestro", produtora=textos.produtora||"Lucia Kratz", cidade=textos.cidade||"Goiânia – GO";
+        const sigL=textos.sigLucia||"https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigM=textos.sigMaestro||"https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje=new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodo=`${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+        const linhas=freqCorista.map((f,i)=>`<tr><td>${i+1}</td><td>${f.eventoData?new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR"):""}</td><td>${f.eventoTitulo||"—"}</td></tr>`).join("");
+        const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12px;color:#222}@media print{@page{margin:2cm}}.header{display:flex;justify-content:space-between;border-bottom:3px solid ${cor};padding-bottom:12px;margin-bottom:20px}.logo{width:52px;height:52px;object-fit:contain}.titulo{text-align:center;font-size:16px;font-weight:bold;color:${cor};text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}.subtitulo{text-align:center;font-size:12px;color:#666;margin-bottom:20px}.info-box{border:1px solid #EEE;border-radius:6px;padding:12px;margin-bottom:16px;background:#FAFAFA}.info-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px}.info-lbl{font-weight:bold;color:${cor};min-width:100px;font-size:11px;text-transform:uppercase}.decl{border-left:3px solid ${cor};padding:10px 14px;margin:16px 0;background:#FAFAFA;font-size:13px;line-height:1.7}table{width:100%;border-collapse:collapse;margin-bottom:20px}th{background:${cor};color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}td{padding:7px 10px;border-bottom:1px solid #EEE;font-size:12px}tr:nth-child(even) td{background:#FAFAFA}.assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}.assin img{height:50px;object-fit:contain;display:block;margin:0 auto 6px}.assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}.assin-nome{font-weight:bold;font-size:12px}.assin-cargo{font-size:10px;color:#888}.rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}</style></head><body>
+<div class="header"><img src="${logoUrl}" class="logo"/><div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}</div></div>
+<div class="titulo">Declaração de Participação</div><div class="subtitulo">${nomeApp}</div>
+<div class="info-box">
+  <div class="info-row"><span class="info-lbl">Nome:</span><span><strong>${coristaAtual.name}</strong></span></div>
+  <div class="info-row"><span class="info-lbl">Função:</span><span>${coristaAtual.funcao||"Corista"}</span></div>
+  <div class="info-row"><span class="info-lbl">Naipe:</span><span>${coristaAtual.voice||"—"}</span></div>
+  <div class="info-row"><span class="info-lbl">Período:</span><span>${periodo}</span></div>
+  <div class="info-row"><span class="info-lbl">Participações:</span><span>${freqCorista.length} evento${freqCorista.length!==1?"s":""}</span></div>
+</div>
+<div class="decl">Declaramos para os devidos fins que <strong>${coristaAtual.name}</strong>, ${coristaAtual.funcao||"Corista"}${coristaAtual.voice?" — "+coristaAtual.voice:""}, é integrante do ${nomeApp}, participando ativamente das atividades do grupo no período de ${periodo}, com registro de presença em <strong>${freqCorista.length} evento${freqCorista.length!==1?"s":""}</strong> conforme detalhado abaixo.</div>
+<table><thead><tr><th>#</th><th>Data</th><th>Evento</th></tr></thead><tbody>${linhas}</tbody></table>
+<div class="assinaturas">
+  <div class="assin">${sigM?`<img src="${sigM}"/>`:"<div style='height:50px'></div>"}<div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div></div>
+  <div class="assin">${sigL?`<img src="${sigL}"/>`:"<div style='height:50px'></div>"}<div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div></div>
+</div>
+<div class="rodape">Documento gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+</body></html>`;
+        const win=window.open("","_blank"); win.document.write(html); win.document.close(); setTimeout(()=>win.print(),800);
+        // Salvar no histórico
+        db.collection("relatorios_historico").add({ tipo:"Declaração Individual", corista:coristaAtual.name, periodo:`${dataInicio} a ${dataFim}`, geradoEm:firebase.firestore.FieldValue.serverTimestamp(), geradoPor:"RH" });
+    }
+
+    const inp = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl = { display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 };
+
+    return (
+        <div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor, marginBottom:4 }}>RH — Pessoas e Cultura</div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Gestão de pessoas, comunicação e relatórios</div>
+
+            {/* Abas */}
+            <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+                {abas.map(a=>(
+                    <button key={a.key} onClick={()=>setAba(a.key)}
+                        style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:20, border:`1px solid ${aba===a.key?cor:"#EEE"}`, background:aba===a.key?cor:"#fff", color:aba===a.key?"#fff":"#555", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                        <Icon name={a.icon} size={14} color={aba===a.key?"#fff":"#888"} /> {a.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* DASHBOARD */}
+            {aba==="dashboard" && <>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:12 }}>
+                    {[
+                        { label:"Integrantes ativos", value:ativos.length,      sub:`${inativos.length} inativos`, icon:"users",    color:cor },
+                        { label:"Confirmações",        value:vaiParticipiar,     sub:`${naoVai} não vão`,          icon:"check",     color:"#2E7D32" },
+                        { label:"Aniversariantes",     value:aniversarios.length, sub:"este mês",                  icon:"cake",      color:"#E65100" },
+                    ].map(m=>(
+                        <div key={m.label} style={{ ...card, marginBottom:0, textAlign:"center", padding:"14px" }}>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:8 }}>
+                                <Icon name={m.icon} size={16} color={m.color} />
+                            </div>
+                            <div style={{ fontSize:26, fontWeight:700, color:m.color, lineHeight:1 }}>{m.value}</div>
+                            <div style={{ fontSize:11, color:"#1A1D23", fontWeight:600, marginTop:4 }}>{m.label}</div>
+                            <div style={{ fontSize:11, color:"#AAA", marginTop:2 }}>{m.sub}</div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Distribuição por naipe */}
+                <div style={card}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Distribuição por Naipe</div>
+                    {Object.entries(naipes).map(([naipe,qtd])=>{
+                        const pct = ativos.length>0 ? Math.round((qtd/ativos.length)*100) : 0;
+                        return (
+                            <div key={naipe} style={{ marginBottom:10 }}>
+                                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                                    <span style={{ fontSize:13, color:"#1A1D23", fontWeight:600 }}>{naipe}</span>
+                                    <span style={{ fontSize:12, color:"#AAA" }}>{qtd} · {pct}%</span>
+                                </div>
+                                <div style={{ height:8, background:"#F5EAEA", borderRadius:4, overflow:"hidden" }}>
+                                    <div style={{ width:pct+"%", height:"100%", background:naipeColors[naipe]||"#888", borderRadius:4 }} />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Frequência por corista */}
+                {freqLista.length>0 && <div style={card}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Frequência de Participação</div>
+                    {freqLista.map(([nome,qtd])=>(
+                        <div key={nome} style={{ marginBottom:10 }}>
+                            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                                <span style={{ fontSize:13, color:"#1A1D23" }}>{nome}</span>
+                                <span style={{ fontSize:12, fontWeight:700, color:cor }}>{qtd} evento{qtd!==1?"s":""}</span>
+                            </div>
+                            <div style={{ height:6, background:"#F5EAEA", borderRadius:3, overflow:"hidden" }}>
+                                <div style={{ width:`${(qtd/maxFreq)*100}%`, height:"100%", background:cor, borderRadius:3 }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>}
+
+                {/* Confirmações por evento */}
+                {proxEventos.length>0 && <div style={card}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Confirmações — Próximos Eventos</div>
+                    {proxEventos.map(e=>{
+                        const vao = confirmacoes.filter(c=>c.eventoId===e.id&&c.status==="vou").length;
+                        const nao = confirmacoes.filter(c=>c.eventoId===e.id&&c.status==="nao").length;
+                        return (
+                            <div key={e.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:"1px solid #F5EAEA" }}>
+                                <div style={{ flex:1 }}>
+                                    <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{e.title}</div>
+                                    <div style={{ fontSize:12, color:"#AAA" }}>{e.date}</div>
+                                </div>
+                                <span style={{ fontSize:12, padding:"2px 10px", borderRadius:20, background:"#E8F5E9", color:"#2E7D32", fontWeight:700 }}>✓ {vao} vão</span>
+                                <span style={{ fontSize:12, padding:"2px 10px", borderRadius:20, background:"#FFF5F5", color:cor, fontWeight:700 }}>✕ {nao} não vão</span>
+                            </div>
+                        );
+                    })}
+                </div>}
+
+                {/* Aniversariantes */}
+                {aniversarios.length>0 && <div style={{ ...card, borderLeft:`3px solid #E65100`, background:"#FFFBEB" }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:"#E65100", marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>🎂 Aniversariantes do Mês</div>
+                    {aniversarios.map(m=>{ const [,mm,dd]=m.birthday.split("-"); return (
+                        <div key={m.id} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #FDE68A" }}>
+                            <span style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{m.name}</span>
+                            <span style={{ fontSize:12, color:"#AAA" }}>dia {parseInt(dd)}</span>
+                        </div>
+                    );})}
+                </div>}
+            </>}
+
+            {/* NOTÍCIAS */}
+            {aba==="noticias" && <>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Notícias do Coral</div>
+                    <button onClick={()=>setModalNoticia("nova")}
+                        style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 16px", background:cor, border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
+                        <Icon name="plus" size={14} color="#fff" /> Nova Notícia
+                    </button>
+                </div>
+                {noticias.length===0
+                    ? <div style={{ ...card, textAlign:"center", color:"#CCC", padding:"32px" }}>Nenhuma notícia publicada.</div>
+                    : noticias.map(n=>(
+                        <div key={n.id} style={{ ...card, cursor:"pointer" }} onClick={()=>setModalNoticia(n)}>
+                            {n.imageUrl && <img src={n.imageUrl} alt="" style={{ width:"100%", height:160, objectFit:"cover", borderRadius:8, marginBottom:12 }} onError={e=>e.target.style.display="none"} />}
+                            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                                <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:cor+"18", color:cor, fontWeight:700 }}>{n.categoria||"Geral"}</span>
+                                {n.createdAt?.seconds && <span style={{ fontSize:11, color:"#AAA" }}>{new Date(n.createdAt.seconds*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"})}</span>}
+                            </div>
+                            <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23", marginBottom:6 }}>{n.titulo}</div>
+                            <div style={{ fontSize:13, color:"#555", lineHeight:1.5 }}>{n.texto.slice(0,200)}{n.texto.length>200?"...":""}</div>
+                        </div>
+                    ))
+                }
+                {modalNoticia && <ModalNoticia noticia={modalNoticia==="nova"?null:modalNoticia} onClose={()=>setModalNoticia(null)} config={config} />}
+            </>}
+
+            {/* DECLARAÇÕES */}
+            {aba==="declaracoes" && <>
+                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:16 }}>Declaração Individual por Corista</div>
+                <div style={card}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:16 }}>
+                        <div>
+                            <label style={lbl}>Corista</label>
+                            <select style={{ ...inp, width:"100%" }} value={coristaDecl} onChange={e=>setCoristaDecl(e.target.value)}>
+                                <option value="">Selecionar...</option>
+                                {members.filter(m=>m.active).sort((a,b)=>a.name>b.name?1:-1).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+                            </select>
+                        </div>
+                        <div><label style={lbl}>Data início</label><input type="date" style={{ ...inp, width:"100%" }} value={dataInicio} onChange={e=>setDataInicio(e.target.value)} /></div>
+                        <div><label style={lbl}>Data fim</label><input type="date" style={{ ...inp, width:"100%" }} value={dataFim} onChange={e=>setDataFim(e.target.value)} /></div>
+                    </div>
+                    {coristaDecl && (freqCorista.length===0
+                        ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma participação registrada.</div>
+                        : <>
+                            {freqCorista.map((f,i)=>(
+                                <div key={f.id} style={{ display:"flex", gap:10, padding:"8px 0", borderBottom:"1px solid #F5F0F0", alignItems:"center" }}>
+                                    <span style={{ fontSize:12, color:"#AAA", minWidth:20 }}>{i+1}</span>
+                                    <span style={{ fontSize:12, color:"#888", minWidth:90 }}>{f.eventoData?new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR"):""}</span>
+                                    <span style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{f.eventoTitulo}</span>
+                                </div>
+                            ))}
+                            <button onClick={gerarDeclCorista} style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 20px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginTop:14 }}>
+                                <Icon name="printer" size={14} color="#fff" /> Gerar Declaração PDF
+                            </button>
+                        </>
+                    )}
+                </div>
+            </>}
+
+            {/* HISTÓRICO */}
+            {aba==="historico" && <>
+                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:16 }}>Histórico de Relatórios Enviados</div>
+                {relatorios.length===0
+                    ? <div style={{ ...card, textAlign:"center", color:"#CCC", padding:"32px" }}>Nenhum relatório registrado ainda.</div>
+                    : <div style={{ ...card, padding:0, overflow:"hidden" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px 100px", padding:"10px 16px", background:"#FAFAFA", borderBottom:"1px solid #EEE" }}>
+                            {["Tipo","Período","Gerado em","Por"].map(h=><div key={h} style={{ fontSize:11, fontWeight:700, color:cor }}>{h}</div>)}
+                        </div>
+                        {relatorios.map((r,i)=>(
+                            <div key={r.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px 100px", padding:"12px 16px", borderBottom:i<relatorios.length-1?"1px solid #F5F5F5":"none", alignItems:"center", background:i%2===0?"#fff":"#FDFBFB" }}>
+                                <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{r.tipo||"Relatório"}</div>
+                                <div style={{ fontSize:12, color:"#888" }}>{r.periodo||"—"}{r.corista?` · ${r.corista}`:""}</div>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{r.geradoEm?.seconds?new Date(r.geradoEm.seconds*1000).toLocaleDateString("pt-BR"):""}</div>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{r.geradoPor||"—"}</div>
+                            </div>
+                        ))}
+                    </div>
+                }
+            </>}
+        </div>
+    );
+}
+
+
 // ── NAV ───────────────────────────────────────────────────────────────────────
 const NAV_ADMIN = [
     { key:"painel",       label:"Painel",            icon:"layout-dashboard" },
@@ -3592,11 +3960,15 @@ const NAV_ADMIN = [
     { key:"relatorios",   label:"Relatórios",         icon:"chart-bar" },
     { key:"config",       label:"Configurações",      icon:"settings" },
 ];
+const NAV_RH = [
+    { key:"rh", label:"RH", icon:"briefcase" },
+];
+
 const NAV_CORISTA = [
-    { key:"inicio",      label:"Início",          icon:"home" },
-    { key:"musicas",     label:"Músicas",          icon:"music" },
-    { key:"estudos",     label:"Sala de Estudos",  icon:"graduation-cap" },
-    { key:"declaracao",  label:"Minha Declaração", icon:"file-text" },
+    { key:"inicio",     label:"Início",          icon:"home" },
+    { key:"musicas",    label:"Músicas",          icon:"music" },
+    { key:"estudos",    label:"Sala de Estudos",  icon:"graduation-cap" },
+    { key:"declaracao", label:"Minha Declaração", icon:"file-text" },
 ];
 
 // ── APP ───────────────────────────────────────────────────────────────────────
@@ -3614,7 +3986,7 @@ function App() {
     function handleLogin(u) {
         localStorage.setItem("cf_user", JSON.stringify(u));
         setUser(u);
-        setTab(u.isAdmin ? "painel" : "inicio");
+        setTab(u.isAdmin ? "painel" : u.role==="rh" ? "rh" : "inicio");
         // Registrar acesso do corista
         if (u.role === "corista" && u.name) {
             const agora = new Date();
@@ -3639,7 +4011,7 @@ function App() {
     const isAdmin  = user.isAdmin;
     const cor      = config.corPrimaria||COR;
     const fundo    = config.corFundo||COR_FUNDO;
-    const navItems = isAdmin ? NAV_ADMIN : NAV_CORISTA;
+    const navItems = isAdmin ? NAV_ADMIN : user.role==="rh" ? NAV_RH : NAV_CORISTA;
 
     const pages = {
         painel:       <Painel user={user} config={config} />,
@@ -3652,13 +4024,14 @@ function App() {
         apresentacao: <Apresentacao config={config} />,
         declaracao:   isAdmin ? <Declaracao config={config} /> : <MinhaDeclaracao user={user} config={config} />,
         relatorios:   <Relatorios config={config} />,
+        rh:           <AreaRH config={config} />,
         config:       <Configuracoes config={config} save={save} />,
         inicio:       <PainelCorista user={user} config={config} />,
     };
 
     const mobileNav = isAdmin
         ? [NAV_ADMIN[0], NAV_ADMIN[1], NAV_ADMIN[4], NAV_ADMIN[5], NAV_ADMIN[10]]
-        : [NAV_CORISTA[0], NAV_CORISTA[1], NAV_CORISTA[2], NAV_CORISTA[3]];
+        : user.role==="rh" ? NAV_RH : [NAV_CORISTA[0], NAV_CORISTA[1], NAV_CORISTA[2], NAV_CORISTA[3]];
 
     return (
         <div style={{ display:"flex", minHeight:"100vh", background:fundo }}>
