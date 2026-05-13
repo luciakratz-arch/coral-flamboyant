@@ -1316,6 +1316,7 @@ function Repertorio({ config, isAdmin }) {
     const [busca, setBusca]       = useState("");
     const [filtro, setFiltro]     = useState("Todas as Categorias");
     const [modal, setModal]       = useState(null);
+    const [player, setPlayer]     = useState(null);
     const cor = config.corPrimaria||COR;
 
     if (loading) return <Spinner />;
@@ -1329,7 +1330,6 @@ function Repertorio({ config, isAdmin }) {
         return ok && of;
     });
 
-    const [player, setPlayer] = useState(null);
     function MaterialBadge({ label, icon, url }) {
         if (!url) return null;
         return (
