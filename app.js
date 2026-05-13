@@ -587,7 +587,7 @@ function Configuracoes({ config, save }) {
 // ── AGENDA ────────────────────────────────────────────────────────────────────
 const TIPOS_EVENTO   = ["Ensaio","Apresentação","Reunião","Gravação","Feriado Nacional","Feriado Local","Outro"];
 const STATUS_EVENTO  = ["Planejada","Confirmado","Cancelado","Reagendado","Suspenso"];
-const RECORRENCIAS   = ["Sem recorrência","Semanal","Quinzenal","Mensal"];
+const RECORRENCIAS   = ["Sem recorrência","Semanal","Quinzenal","Mensal","Indeterminada"];
 const WEEKDAYS_PT    = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const STATUS_COLORS  = { Planejada:"#1565C0", Confirmado:"#2E7D32", Cancelado:"#B41020", Reagendado:"#E65100", Suspenso:"#7B1FA2" };
 
@@ -602,23 +602,26 @@ function ModalEvento({ evento, onClose, config }) {
         if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
         if (!form.date)         { setErro("Data é obrigatória.");   return; }
         setSalvando(true);
+        const grupoId = Date.now().toString(36) + Math.random().toString(36).substr(2);
         const d = { title:form.title, date:form.date, tipo:form.tipo, status:form.status, timeChegada:form.timeChegada||"", timeApresentacao:form.timeApresentacao||"", local:form.local||"", mapsUrl:form.mapsUrl||"", notes:form.notes||"", recorrencia:form.recorrencia };
         if (evento) {
             await db.collection("events").doc(evento.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
         } else {
-            // Gerar eventos recorrentes
             const datas = [form.date];
             if (form.recorrencia !== "Sem recorrência" && form.date) {
                 const base = new Date(form.date + "T12:00:00");
                 const dias = form.recorrencia==="Semanal"?7:form.recorrencia==="Quinzenal"?14:30;
-                for (let i=1; i<=11; i++) {
+                const total = form.recorrencia==="Indeterminada"?52:11;
+                const intervalo = form.recorrencia==="Indeterminada"?7:dias;
+                for (let i=1; i<=total; i++) {
                     const nova = new Date(base);
-                    nova.setDate(nova.getDate() + dias*i);
+                    nova.setDate(nova.getDate() + intervalo*i);
                     datas.push(nova.toISOString().split("T")[0]);
                 }
             }
+            const temGrupo = datas.length > 1;
             for (const dt of datas) {
-                await db.collection("events").add({...d, date:dt, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+                await db.collection("events").add({...d, date:dt, ...(temGrupo?{grupoId}:{}), createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             }
         }
         setSalvando(false);
@@ -626,8 +629,22 @@ function ModalEvento({ evento, onClose, config }) {
     }
 
     async function excluir() {
-        if (!window.confirm("Excluir este evento?")) return;
-        await db.collection("events").doc(evento.id).delete();
+        if (!evento.grupoId) {
+            if (!window.confirm("Excluir este evento?")) return;
+            await db.collection("events").doc(evento.id).delete();
+        } else {
+            const opcao = window.confirm("Clique OK para excluir ESTE E OS FUTUROS eventos da série.\nClique Cancelar para excluir SÓ ESTE evento.");
+            if (opcao === null) return;
+            if (opcao) {
+                // Excluir este e futuros do mesmo grupo
+                const snap = await db.collection("events").where("grupoId","==",evento.grupoId).get();
+                const batch = db.batch();
+                snap.docs.forEach(doc => { if (doc.data().date >= evento.date) batch.delete(doc.ref); });
+                await batch.commit();
+            } else {
+                await db.collection("events").doc(evento.id).delete();
+            }
+        }
         onClose();
     }
 
@@ -695,7 +712,7 @@ function ModalEvento({ evento, onClose, config }) {
                             {RECORRENCIAS.map(r=><option key={r}>{r}</option>)}
                         </select>
                     </div>
-                    {form.recorrencia!=="Sem recorrência" && <div style={{ fontSize:12, color:"#AAA", marginTop:6 }}>Serão criados 12 eventos a partir desta data.</div>}
+                    {form.recorrencia!=="Sem recorrência" && <div style={{ fontSize:12, color:"#AAA", marginTop:6 }}>{form.recorrencia==="Indeterminada"?"Serão criados eventos semanais por 1 ano (editável depois).":"Serão criados 12 eventos a partir desta data."}</div>}
                 </div>}
 
                 <div style={{ display:"flex", gap:10 }}>
