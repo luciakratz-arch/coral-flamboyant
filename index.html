@@ -1,178 +1,182 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coral Flamboyant | Gestão Profissional</title>
-  
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <style>
-    :root {
-      --primary: #B41020;
-      --bg: #F0F2F5;
-      --card: #FFFFFF;
-      --text: #1A1D23;
-      --sub: #64748B;
-      --shadow: 0 8px 24px rgba(180, 16, 32, 0.08);
-    }
-
-    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    body { font-family:'Inter', sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
-    .serif { font-family:'Playfair Display', serif; }
-
-    .app-container { max-width:480px; margin:0 auto; min-height:100vh; position:relative; background:var(--bg); }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coral Flamboyant | Premium</title>
     
-    /* Header Premium */
-    .header { background:var(--primary); padding:24px 20px; color:#fff; border-bottom-left-radius:24px; border-bottom-right-radius:24px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-    .header h1 { font-size:22px; letter-spacing:0.5px; }
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     
-    /* Cards do Dashboard */
-    .content { padding:20px; padding-bottom:100px; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px; }
-    
-    .card { 
-      background:var(--card); padding:20px; border-radius:16px; border:1px solid rgba(0,0,0,0.03);
-      box-shadow:var(--shadow); transition:transform 0.2s; display:flex; flex-direction:column; align-items:center; text-align:center;
-    }
-    .card:active { transform:scale(0.96); }
-    
-    .icon-box { 
-      width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;
-      background:rgba(180, 16, 32, 0.08); color:var(--primary);
-    }
+    <style>
+        :root {
+            --primary: #B41020;
+            --bg-gradient: linear-gradient(180deg, #F8F9FA 0%, #E9ECEF 100%);
+            --glass: rgba(255, 255, 255, 0.7);
+            --border: rgba(255, 255, 255, 0.4);
+        }
 
-    /* Menu Inferior */
-    .nav-bar { 
-      position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:90%; max-width:400px;
-      background:#1A1D23; border-radius:24px; display:flex; justify-content:space-around; padding:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3);
-    }
-    .nav-btn { color:#94A3B8; display:flex; flex-direction:column; align-items:center; font-size:10px; gap:4px; cursor:pointer; }
-    .nav-btn.active { color:#fff; }
-  </style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body { 
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+
+        .iphone-container {
+            width: 100%;
+            max-width: 414px;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        /* Saudação mais discreta e elegante */
+        .greeting {
+            margin-bottom: 40px;
+            padding-left: 10px;
+        }
+
+        .greeting h2 { font-weight: 300; font-size: 24px; color: #1A1D23; }
+        .greeting b { font-weight: 600; color: var(--primary); }
+
+        /* Grid de Cards com efeito de Vidro (Glassmorphism) */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 28px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 160px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:active { transform: scale(0.96); opacity: 0.8; }
+
+        .icon-circle {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .card-label {
+            font-size: 15px;
+            font-weight: 500;
+            color: #2D3436;
+            letter-spacing: -0.3px;
+        }
+
+        .card-desc {
+            font-size: 11px;
+            color: #636E72;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* Barra de navegação inferior estilo Floating Dock */
+        .dock {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 350px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 40px;
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-around;
+            border: 1px solid var(--border);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .dock-item {
+            color: #B2BEC3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .dock-item.active { color: var(--primary); }
+
+    </style>
 </head>
 <body>
-  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
-
-    // Configuração Firebase (Sua conexão original)
-    const firebaseConfig = {
-      apiKey: "AIzaSyDcLsndRbDPeUru_Di-h3w8RP_Ung-YSUo",
-      authDomain: "flamboyant-coral.firebaseapp.com",
-      projectId: "flamboyant-coral",
-      storageBucket: "flamboyant-coral.firebasestorage.app",
-      messagingSenderId: "15022873086",
-      appId: "1:15022873086:web:507d97757035ac90d108af"
-    };
-
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    const Icon = ({ name, color }) => {
-      useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
-      return <i data-lucide={name} style={{ width:24, height:24, color: color || "inherit" }}></i>;
-    };
-
-    function App() {
-      const [user, setUser] = useState(JSON.parse(localStorage.getItem("cf_user")));
-      const [tab, setTab] = useState('inicio');
-
-      if (!user) {
-        return (
-          <div className="app-container" style={{display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-            <div className="card" style={{width:'100%', padding:40}}>
-              <h1 className="serif" style={{color: 'var(--primary)', marginBottom:10}}>Coral Flamboyant</h1>
-              <p style={{fontSize:14, color:'var(--sub)', marginBottom:30}}>Acesso Restrito</p>
-              <button 
-                onClick={() => {
-                  const demo = {name: "Dra. Lúcia", role: "admin"};
-                  localStorage.setItem("cf_user", JSON.stringify(demo));
-                  setUser(demo);
-                }}
-                style={{width:'100%', background:'var(--primary)', color:'#fff', border:'none', padding:15, borderRadius:12, fontWeight:600}}
-              >
-                Entrar no Painel
-              </button>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="app-container">
-          <header className="header">
-            <h1 className="serif">Coral Flamboyant</h1>
-            <p style={{fontSize:12, opacity:0.8}}>Bem-vinda, {user.name}</p>
-          </header>
-
-          <div className="content">
-            {tab === 'inicio' && (
-              <>
-                <h2 style={{fontSize:16, fontWeight:600}}>Painel Principal</h2>
-                <div className="grid">
-                  <div className="card" onClick={() => setTab('musicas')}>
-                    <div className="icon-box"><Icon name="music" /></div>
-                    <span style={{fontSize:13, fontWeight:500}}>Repertório</span>
-                  </div>
-                  <div className="card">
-                    <div className="icon-box" style={{color:'#007AFF', background:'rgba(0,122,255,0.1)'}}><Icon name="calendar" /></div>
-                    <span style={{fontSize:13, fontWeight:500}}>Agenda</span>
-                  </div>
-                  <div className="card">
-                    <div className="icon-box" style={{color:'#FF9500', background:'rgba(255,149,0,0.1)'}}><Icon name="file-text" /></div>
-                    <span style={{fontSize:13, fontWeight:500}}>Documentos</span>
-                  </div>
-                  <div className="card">
-                    <div className="icon-box" style={{color:'#34C759', background:'rgba(52,199,89,0.1)'}}><Icon name="users" /></div>
-                    <span style={{fontSize:13, fontWeight:500}}>Membros</span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {tab === 'musicas' && (
-              <div>
-                <button onClick={() => setTab('inicio')} style={{border:'none', background:'none', color: 'var(--primary)', marginBottom:20, fontWeight:600}}>← Voltar</button>
-                <h2 className="serif">Repertório Musical</h2>
-                <div style={{marginTop:15}}>
-                  <div className="card" style={{flexDirection:'row', justifyContent:'space-between', width:'100%', marginBottom:12}}>
-                    <div style={{textAlign:'left'}}>
-                      <div style={{fontWeight:600}}>Exemplo: Agnus Dei</div>
-                      <div style={{fontSize:11, color:'var(--sub)'}}>Soprano / Contralto</div>
-                    </div>
-                    <Icon name="play-circle" color="var(--primary)" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <nav className="nav-bar">
-            <div className={`nav-btn ${tab === 'inicio' ? 'active' : ''}`} onClick={() => setTab('inicio')}>
-              <Icon name="layout-dashboard" />Início
-            </div>
-            <div className={`nav-btn ${tab === 'musicas' ? 'active' : ''}`} onClick={() => setTab('musicas')}>
-              <Icon name="music" />Músicas
-            </div>
-            <div className="nav-btn" onClick={() => {localStorage.removeItem("cf_user"); setUser(null);}}>
-              <Icon name="log-out" />Sair
-            </div>
-          </nav>
+    <div class="iphone-container">
+        <div class="greeting">
+            <h2>Olá, <b>Lúcia</b></h2>
+            <p style="font-size: 13px; color: #636E72;">O que vamos gerenciar hoje?</p>
         </div>
-      );
-    }
 
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<App />);
-  </script>
+        <div class="dashboard-grid">
+            <div class="glass-card">
+                <div class="icon-circle"><i data-lucide="music-2"></i></div>
+                <div>
+                    <span class="card-label">Repertório</span>
+                    <span class="card-desc">Áudios e partituras</span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="icon-circle"><i data-lucide="calendar"></i></div>
+                <div>
+                    <span class="card-label">Ensaios</span>
+                    <span class="card-desc">Datas e locais</span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="icon-circle"><i data-lucide="folder-open"></i></div>
+                <div>
+                    <span class="card-label">Arquivos</span>
+                    <span class="card-desc">Documentos gerais</span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="icon-circle"><i data-lucide="users"></i></div>
+                <div>
+                    <span class="card-label">Coristas</span>
+                    <span class="card-desc">Gestão de membros</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="dock">
+            <div class="dock-item active"><i data-lucide="home"></i>Início</div>
+            <div class="dock-item"><i data-lucide="mic-2"></i>Vozes</div>
+            <div class="dock-item"><i data-lucide="user"></i>Perfil</div>
+        </nav>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>
