@@ -623,6 +623,14 @@ function ModalEvento({ evento, onClose, config }) {
             for (const dt of datas) {
                 await db.collection("events").add({...d, date:dt, ...(temGrupo?{grupoId}:{}), createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             }
+            // Aviso automático para o primeiro evento
+            await db.collection("avisos").add({
+                title: `📅 Novo evento: ${form.title}`,
+                text: `Um novo evento foi adicionado à agenda: "${form.title}" em ${fmtDate(form.date)}${form.local?" — "+form.local:""}.`,
+                tipo: "auto_evento",
+                prioridade: "Informativo",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
         setSalvando(false);
         onClose();
@@ -886,6 +894,175 @@ function Agenda({ config, isAdmin }) {
 }
 
 
+
+// ── AVISOS ────────────────────────────────────────────────────────────────────
+function ModalAviso({ onClose, config }) {
+    const cor = config.corPrimaria||COR;
+    const [form, setForm]         = useState({ title:"", prioridade:"Normal", text:"" });
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro]         = useState("");
+
+    async function publicar() {
+        if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
+        if (!form.text.trim())  { setErro("Mensagem é obrigatória."); return; }
+        setSalvando(true);
+        await db.collection("avisos").add({
+            title: form.title,
+            prioridade: form.prioridade,
+            text: form.text,
+            tipo: "manual",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        setSalvando(false);
+        onClose();
+    }
+
+    const inp = { width:"100%", padding:"11px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#888", marginBottom:5 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>Novo Aviso</div>
+                    <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="x" size={16} color="#666" />
+                    </button>
+                </div>
+
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Título</label>
+                    <input style={{ ...inp, borderColor: erro&&!form.title?cor:"#E8E0E0" }} value={form.title}
+                        onChange={e=>{setForm(f=>({...f,title:e.target.value}));setErro("");}} autoFocus />
+                </div>
+                <div style={{ marginBottom:16 }}>
+                    <label style={lbl}>Prioridade</label>
+                    <select style={inp} value={form.prioridade} onChange={e=>setForm(f=>({...f,prioridade:e.target.value}))}>
+                        <option>Normal</option>
+                        <option>Urgente</option>
+                        <option>Informativo</option>
+                    </select>
+                </div>
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Mensagem</label>
+                    <textarea style={{ ...inp, minHeight:120, resize:"vertical" }} value={form.text}
+                        onChange={e=>{setForm(f=>({...f,text:e.target.value}));setErro("");}} />
+                </div>
+                {erro && <div style={{ fontSize:13, color:cor, marginBottom:12 }}>{erro}</div>}
+                <div style={{ display:"flex", gap:10 }}>
+                    <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+                    <button onClick={publicar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                        {salvando?"Publicando...":"Publicar"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Avisos({ config, isAdmin }) {
+    const { data:avisos, loading:lA } = useCollection("avisos");
+    const { data:members }            = useCollection("members");
+    const [showModal, setShowModal]   = useState(false);
+    const cor = config.corPrimaria||COR;
+
+    if (lA) return <Spinner />;
+
+    // Aniversariantes do mês atual
+    const currentMonth = new Date().getMonth()+1;
+    const today = todayStr();
+    const aniversarios = members.filter(m =>
+        m.active && m.birthday && parseInt(m.birthday.split("-")[1]) === currentMonth
+    ).sort((a,b) => parseInt(a.birthday.split("-")[2]) - parseInt(b.birthday.split("-")[2]));
+
+    // Cores por prioridade
+    const prioColor = { Urgente: cor, Normal:"#E65100", Informativo:"#1565C0" };
+    const prioIcon  = { Urgente:"alert-circle", Normal:"alert-circle", Informativo:"megaphone" };
+
+    function fmtDataAviso(seconds) {
+        if (!seconds) return "";
+        return new Date(seconds*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+    }
+
+    async function excluir(id) {
+        if (!window.confirm("Excluir este aviso?")) return;
+        await db.collection("avisos").doc(id).delete();
+    }
+
+    return (
+        <div>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Avisos</div>
+                {isAdmin && <button onClick={()=>setShowModal(true)}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:cor, border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit" }}>
+                    <Icon name="plus" size={14} color="#fff" /> Novo Aviso
+                </button>}
+            </div>
+
+            {/* Card aniversariantes do mês — fixo, automático */}
+            {aniversarios.length > 0 && (
+                <div style={{ background:"#FFFBEB", border:"1px solid #FDE68A", borderLeft:"3px solid #F59E0B", borderRadius:12, padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                        <span style={{ fontSize:16 }}>🎂</span>
+                        <div style={{ fontSize:15, fontWeight:700, color:"#92400E" }}>
+                            Aniversariantes do mês — {MONTHS_PT[currentMonth-1].charAt(0).toUpperCase()+MONTHS_PT[currentMonth-1].slice(1)}
+                        </div>
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                        {aniversarios.map(m => {
+                            const dd = parseInt(m.birthday.split("-")[2]);
+                            const isToday = m.birthday.slice(5) === today.slice(5);
+                            return (
+                                <span key={m.id} style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"4px 10px", background:"#FEF3C7", borderRadius:20, fontSize:12, color:"#92400E", fontWeight:600, border: isToday?"2px solid #F59E0B":"1px solid #FDE68A" }}>
+                                    🎂 {m.name} (dia {dd}){isToday?" 🎉":""}
+                                </span>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Lista de avisos */}
+            {avisos.length === 0 && aniversarios.length === 0 && (
+                <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"32px", textAlign:"center", color:"#CCC", fontSize:14 }}>
+                    Nenhum aviso publicado.
+                </div>
+            )}
+
+            {avisos.map(a => {
+                const borderColor = prioColor[a.prioridade] || cor;
+                const iconName    = prioIcon[a.prioridade]  || "megaphone";
+                return (
+                    <div key={a.id} style={{ background: a.prioridade==="Urgente"?"#FFF5F5":"#fff", borderRadius:12, border:"1px solid #EEE8E8", borderLeft:`3px solid ${borderColor}`, padding:"16px 20px", marginBottom:10, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                <Icon name={iconName} size={16} color={borderColor} />
+                                <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23" }}>{a.title}</div>
+                            </div>
+                            <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginLeft:12 }}>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{fmtDataAviso(a.createdAt?.seconds)}</div>
+                                {isAdmin && <button onClick={()=>excluir(a.id)}
+                                    style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:2 }}>
+                                    <Icon name="trash-2" size={15} color="#CCC" />
+                                </button>}
+                            </div>
+                        </div>
+                        <div style={{ fontSize:14, color:"#555", lineHeight:1.6 }}>{a.text}</div>
+                        {a.tipo && a.tipo !== "manual" && (
+                            <div style={{ marginTop:8, fontSize:11, color:"#AAA", fontStyle:"italic" }}>Aviso automático</div>
+                        )}
+                    </div>
+                );
+            })}
+
+            {showModal && <ModalAviso onClose={()=>setShowModal(false)} config={config} />}
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -946,7 +1123,7 @@ function App() {
         musicas:      <EmBreve label="Músicas"            icon="music" />,
         estudos:      <EmBreve label="Sala de Estudos"    icon="graduation-cap" />,
         agenda:       <Agenda config={config} isAdmin={isAdmin} />,
-        avisos:       <EmBreve label="Avisos"             icon="megaphone" />,
+        avisos:       <Avisos config={config} isAdmin={isAdmin} />,
         frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
         apresentacao: <EmBreve label="Apresentação"       icon="mic" />,
         declaracao:   <EmBreve label="Declaração Digital" icon="file-text" />,
