@@ -1938,6 +1938,54 @@ function Apresentacao({ config }) {
 
 
 
+
+// ── FREQUÊNCIA POR EVENTOS (usado no Relatório) ───────────────────────────────
+function FrequenciaEventos({ eventos, frequencias, config }) {
+    const cor = config.corPrimaria||COR;
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+
+    // Agrupar frequências por eventoId
+    const porEvento = {};
+    frequencias.forEach(f=>{
+        if (!f.eventoId) return;
+        if (!porEvento[f.eventoId]) porEvento[f.eventoId] = [];
+        porEvento[f.eventoId].push(f);
+    });
+
+    const eventosComFreq = eventos.filter(e=>porEvento[e.id]?.length>0);
+    if (eventosComFreq.length===0) return null;
+
+    return (
+        <div style={card}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                <Icon name="clipboard-check" size={16} color={cor} />
+                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Frequência por Evento</div>
+            </div>
+            {eventosComFreq.map(e=>{
+                const lista = porEvento[e.id]||[];
+                return (
+                    <div key={e.id} style={{ marginBottom:16, paddingBottom:16, borderBottom:"1px solid #F5F0F0" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                            <div>
+                                <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23" }}>{e.title}</div>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{e.date ? new Date(e.date+"T12:00:00").toLocaleDateString("pt-BR") : ""}</div>
+                            </div>
+                            <span style={{ fontSize:13, fontWeight:700, color:cor }}>{lista.length} presente{lista.length!==1?"s":""}</span>
+                        </div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                            {lista.map(f=>(
+                                <span key={f.id} style={{ fontSize:12, padding:"3px 10px", borderRadius:20, background:"#F0EAEA", color:cor, fontWeight:600 }}>
+                                    {f.membroNome}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ── FREQUÊNCIA DE ACESSO ──────────────────────────────────────────────────────
 function FrequenciaAcesso({ config }) {
     const [acessos, setAcessos] = useState([]);
@@ -2032,9 +2080,10 @@ function FrequenciaAcesso({ config }) {
 
 // ── RELATÓRIOS ────────────────────────────────────────────────────────────────
 function Relatorios({ config }) {
-    const { data:events }  = useCollection("events","date");
-    const { data:members } = useCollection("members");
-    const { data:songs }   = useCollection("songs");
+    const { data:events }      = useCollection("events","date");
+    const { data:members }     = useCollection("members");
+    const { data:songs }       = useCollection("songs");
+    const { data:frequencias } = useCollection("frequencias","dataHora");
     const cor = config.corPrimaria||COR;
 
     const [dataInicio, setDataInicio] = useState(new Date().getFullYear()+"-01-01");
@@ -2307,6 +2356,9 @@ ${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produç�
                     </>
                 )}
             </div>
+
+            {/* Frequência por evento */}
+            {eventosFiltrados.length > 0 && <FrequenciaEventos eventos={eventosFiltrados} frequencias={frequencias} config={config} />}
 
             {/* Frequência de acesso */}
             <FrequenciaAcesso config={config} />
@@ -2626,28 +2678,348 @@ function Frequencia({ config }) {
             </div>
 
             {/* Lista de presenças */}
-            {eventoSel && frequencias.length>0 && (
+            {eventoSel && (
                 <div style={card}>
                     <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>
                         Presenças registradas <span style={{ fontSize:13, color:"#AAA", fontWeight:400 }}>({frequencias.length})</span>
                     </div>
-                    <div style={{ border:"1px solid #EEE", borderRadius:8, overflow:"hidden" }}>
-                        <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"8px 12px", background:"#FAFAFA", borderBottom:"1px solid #EEE" }}>
-                            {["#","Nome","Naipe","Horário"].map(h=>(
-                                <div key={h} style={{ fontSize:11, fontWeight:700, color:cor }}>{h}</div>
-                            ))}
-                        </div>
-                        {frequencias.sort((a,b)=>( a.dataHora?.seconds||0)-(b.dataHora?.seconds||0)).map((f,i)=>(
-                            <div key={f.id} style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"10px 12px", borderBottom:i<frequencias.length-1?"1px solid #F5F5F5":"none", alignItems:"center" }}>
-                                <div style={{ fontSize:12, color:"#AAA" }}>{i+1}</div>
-                                <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{f.membroNome}</div>
-                                <div style={{ fontSize:12, color:"#888" }}>{f.naipe||"—"}</div>
-                                <div style={{ fontSize:12, color:"#AAA" }}>
-                                    {f.dataHora?.seconds ? new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—"}
-                                </div>
+                    {frequencias.length === 0
+                        ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma presença registrada ainda.</div>
+                        : <div style={{ border:"1px solid #EEE", borderRadius:8, overflow:"hidden" }}>
+                            <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"8px 12px", background:"#FAFAFA", borderBottom:"1px solid #EEE" }}>
+                                {["#","Nome","Naipe","Horário"].map(h=>(
+                                    <div key={h} style={{ fontSize:11, fontWeight:700, color:cor }}>{h}</div>
+                                ))}
                             </div>
-                        ))}
+                            {frequencias.sort((a,b)=>(a.dataHora?.seconds||0)-(b.dataHora?.seconds||0)).map((f,i)=>(
+                                <div key={f.id} style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"10px 12px", borderBottom:i<frequencias.length-1?"1px solid #F5F5F5":"none", alignItems:"center" }}>
+                                    <div style={{ fontSize:12, color:"#AAA" }}>{i+1}</div>
+                                    <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{f.membroNome}</div>
+                                    <div style={{ fontSize:12, color:"#888" }}>{f.naipe||"—"}</div>
+                                    <div style={{ fontSize:12, color:"#AAA" }}>
+                                        {f.dataHora?.seconds ? new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—"}
+                                    </div>
+                                </div>
+                            ))}
+                          </div>
+                    }
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+
+// ── DECLARAÇÃO DIGITAL ────────────────────────────────────────────────────────
+function Declaracao({ config }) {
+    const { data:events }      = useCollection("events","date");
+    const { data:members }     = useCollection("members");
+    const { data:frequencias } = useCollection("frequencias","dataHora");
+    const [tipo, setTipo]          = useState("evento"); // 'evento' | 'corista'
+    const [eventoSel, setEventoSel] = useState("");
+    const [coristaId, setCoristaId] = useState("");
+    const [dataInicio, setDataInicio] = useState(new Date().getFullYear()+"-01-01");
+    const [dataFim, setDataFim]       = useState(todayStr());
+    const [textos, setTextos]         = useState({});
+    const cor = config.corPrimaria||COR;
+
+    useEffect(()=>{
+        db.collection("config").doc("relatorio").get().then(doc=>{
+            if (doc.exists) setTextos(doc.data());
+        });
+    },[]);
+
+    const today = todayStr();
+    const proximos = events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1);
+    const passados  = events.filter(e=>e.date<today).sort((a,b)=>a.date>b.date?-1:1);
+
+    // Frequências do evento selecionado
+    const freqEvento = frequencias.filter(f=>f.eventoId===eventoSel);
+
+    // Eventos que o corista participou no período
+    const freqCorista = frequencias.filter(f=>
+        f.membroId===coristaId &&
+        f.eventoData >= dataInicio &&
+        f.eventoData <= dataFim
+    ).sort((a,b)=>a.eventoData>b.eventoData?1:-1);
+
+    const eventoAtual  = events.find(e=>e.id===eventoSel);
+    const coristaAtual = members.find(m=>m.id===coristaId);
+
+    function gerarPDFEvento() {
+        if (!eventoAtual || freqEvento.length===0) return;
+        const nomeApp   = config.nomeApp   || "Flamboyant Coral";
+        const logoUrl   = config.logoUrl   || LOGO_URL;
+        const maestro   = textos.maestro   || "Maestro";
+        const produtora = textos.produtora || "Lucia Kratz";
+        const cidade    = textos.cidade    || "Goiânia – GO";
+        const sigLucia  = textos.sigLucia  || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigMaestro= textos.sigMaestro|| "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const dataEvento = eventoAtual.date ? new Date(eventoAtual.date+"T12:00:00").toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}) : "";
+
+        const linhas = freqEvento.map((f,i)=>`
+            <tr>
+                <td style="text-align:center">${i+1}</td>
+                <td>${f.membroNome}</td>
+                <td>${f.naipe||"—"}</td>
+                <td style="text-align:center">${f.dataHora?.seconds ? new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—"}</td>
+            </tr>`).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin:0; padding:0; }
+  @media print { @page { margin: 2cm; } }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${cor}; padding-bottom:14px; margin-bottom:24px; }
+  .logo { width:50px; height:50px; object-fit:contain; }
+  .titulo { text-align:center; font-size:16px; font-weight:bold; color:${cor}; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
+  .subtitulo { text-align:center; font-size:13px; color:#444; margin-bottom:24px; }
+  .info-box { border:1px solid #EEE; border-radius:6px; padding:12px 16px; margin-bottom:20px; background:#FAFAFA; }
+  .info-row { display:flex; gap:8px; margin-bottom:4px; }
+  .info-label { font-weight:bold; color:${cor}; min-width:80px; font-size:11px; text-transform:uppercase; }
+  .info-valor { font-size:12px; color:#333; }
+  table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+  th { background:${cor}; color:#fff; padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
+  td { padding:8px 10px; border-bottom:1px solid #EEE; font-size:12px; }
+  tr:nth-child(even) td { background:#FAFAFA; }
+  .assinaturas { display:flex; justify-content:space-around; margin-top:48px; text-align:center; }
+  .assin img { height:50px; object-fit:contain; display:block; margin:0 auto 6px; }
+  .assin-linha { border-top:1px solid #333; padding-top:6px; min-width:180px; }
+  .assin-nome { font-weight:bold; font-size:12px; }
+  .assin-cargo { font-size:10px; color:#888; }
+  .rodape { text-align:center; font-size:10px; color:#AAA; margin-top:32px; border-top:1px solid #EEE; padding-top:8px; }
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" class="logo" />
+  <div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}</div>
+</div>
+<div class="titulo">Lista de Presença</div>
+<div class="subtitulo">${eventoAtual.title}</div>
+<div class="info-box">
+  <div class="info-row"><span class="info-label">Evento:</span><span class="info-valor">${eventoAtual.title}</span></div>
+  <div class="info-row"><span class="info-label">Data:</span><span class="info-valor">${dataEvento}</span></div>
+  ${eventoAtual.local?`<div class="info-row"><span class="info-label">Local:</span><span class="info-valor">${eventoAtual.local}</span></div>`:""}
+  <div class="info-row"><span class="info-label">Presenças:</span><span class="info-valor">${freqEvento.length} participante${freqEvento.length!==1?"s":""}</span></div>
+</div>
+<table>
+  <thead><tr><th style="width:40px;text-align:center">#</th><th>Nome</th><th>Naipe</th><th style="text-align:center">Check-in</th></tr></thead>
+  <tbody>${linhas}</tbody>
+</table>
+<div class="assinaturas">
+  <div class="assin">
+    ${sigMaestro?`<img src="${sigMaestro}" />`:"<div style='height:50px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div>
+  </div>
+  <div class="assin">
+    ${sigLucia?`<img src="${sigLucia}" />`:"<div style='height:50px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div>
+  </div>
+</div>
+<div class="rodape">Documento gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+</body></html>`;
+
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
+    function gerarPDFCorista() {
+        if (!coristaAtual || freqCorista.length===0) return;
+        const nomeApp   = config.nomeApp   || "Flamboyant Coral";
+        const logoUrl   = config.logoUrl   || LOGO_URL;
+        const maestro   = textos.maestro   || "Maestro";
+        const produtora = textos.produtora || "Lucia Kratz";
+        const cidade    = textos.cidade    || "Goiânia – GO";
+        const sigLucia  = textos.sigLucia  || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigMaestro= textos.sigMaestro|| "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodoFmt = `${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+
+        const linhas = freqCorista.map((f,i)=>`
+            <tr>
+                <td style="text-align:center">${i+1}</td>
+                <td>${f.eventoData ? new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR") : ""}</td>
+                <td>${f.eventoTitulo||"—"}</td>
+            </tr>`).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin:0; padding:0; }
+  @media print { @page { margin: 2cm; } }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${cor}; padding-bottom:14px; margin-bottom:24px; }
+  .logo { width:50px; height:50px; object-fit:contain; }
+  .titulo { text-align:center; font-size:16px; font-weight:bold; color:${cor}; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
+  .subtitulo { text-align:center; font-size:13px; color:#444; margin-bottom:8px; }
+  .info-box { border:1px solid #EEE; border-radius:6px; padding:12px 16px; margin-bottom:20px; background:#FAFAFA; }
+  .info-row { display:flex; gap:8px; margin-bottom:4px; }
+  .info-label { font-weight:bold; color:${cor}; min-width:80px; font-size:11px; text-transform:uppercase; }
+  .info-valor { font-size:12px; color:#333; }
+  .declaracao { border-left:3px solid ${cor}; padding:10px 14px; margin:20px 0; background:#FAFAFA; font-size:13px; line-height:1.7; color:#333; }
+  table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+  th { background:${cor}; color:#fff; padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; }
+  td { padding:8px 10px; border-bottom:1px solid #EEE; font-size:12px; }
+  tr:nth-child(even) td { background:#FAFAFA; }
+  .assinaturas { display:flex; justify-content:space-around; margin-top:48px; text-align:center; }
+  .assin img { height:50px; object-fit:contain; display:block; margin:0 auto 6px; }
+  .assin-linha { border-top:1px solid #333; padding-top:6px; min-width:180px; }
+  .assin-nome { font-weight:bold; font-size:12px; }
+  .assin-cargo { font-size:10px; color:#888; }
+  .rodape { text-align:center; font-size:10px; color:#AAA; margin-top:32px; border-top:1px solid #EEE; padding-top:8px; }
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" class="logo" />
+  <div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}</div>
+</div>
+<div class="titulo">Declaração de Participação</div>
+<div class="subtitulo">${nomeApp}</div>
+<div class="info-box">
+  <div class="info-row"><span class="info-label">Corista:</span><span class="info-valor"><strong>${coristaAtual.name}</strong></span></div>
+  <div class="info-row"><span class="info-label">Naipe:</span><span class="info-valor">${coristaAtual.voice||"—"}</span></div>
+  <div class="info-row"><span class="info-label">Período:</span><span class="info-valor">${periodoFmt}</span></div>
+  <div class="info-row"><span class="info-label">Participações:</span><span class="info-valor">${freqCorista.length} evento${freqCorista.length!==1?"s":""}</span></div>
+</div>
+<div class="declaracao">
+  Declaramos para os devidos fins que <strong>${coristaAtual.name}</strong> é integrante do ${nomeApp},
+  participando ativamente das atividades do grupo no período de ${periodoFmt},
+  com registro de presença em ${freqCorista.length} evento${freqCorista.length!==1?"s":""} conforme detalhado abaixo.
+</div>
+<table>
+  <thead><tr><th style="width:40px;text-align:center">#</th><th>Data</th><th>Evento</th></tr></thead>
+  <tbody>${linhas}</tbody>
+</table>
+<div class="assinaturas">
+  <div class="assin">
+    ${sigMaestro?`<img src="${sigMaestro}" />`:"<div style='height:50px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div>
+  </div>
+  <div class="assin">
+    ${sigLucia?`<img src="${sigLucia}" />`:"<div style='height:50px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div>
+  </div>
+</div>
+<div class="rodape">Documento gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+</body></html>`;
+
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const inp  = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl  = { display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 };
+
+    return (
+        <div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor, marginBottom:4 }}>Declaração Digital</div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Emissão de listas de presença e declarações individuais</div>
+
+            {/* Tipo */}
+            <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+                {[
+                    { key:"evento",  label:"Lista de presença por evento",  icon:"clipboard-list" },
+                    { key:"corista", label:"Declaração individual do corista", icon:"user-check" },
+                ].map(t=>(
+                    <button key={t.key} onClick={()=>setTipo(t.key)}
+                        style={{ flex:1, display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderRadius:10, border:`2px solid ${tipo===t.key?cor:"#EEE"}`, background:tipo===t.key?cor+"10":"#fff", cursor:"pointer", fontFamily:"inherit", fontWeight:tipo===t.key?700:500, color:tipo===t.key?cor:"#555", fontSize:13 }}>
+                        <Icon name={t.icon} size={16} color={tipo===t.key?cor:"#AAA"} />
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Lista de presença por evento */}
+            {tipo==="evento" && (
+                <div style={card}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Lista de Presença por Evento</div>
+                    <div style={{ marginBottom:16 }}>
+                        <label style={lbl}>Evento</label>
+                        <select style={{ ...inp, width:"100%" }} value={eventoSel} onChange={e=>setEventoSel(e.target.value)}>
+                            <option value="">Selecionar evento...</option>
+                            {proximos.length>0 && <optgroup label="PRÓXIMOS">
+                                {proximos.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                            </optgroup>}
+                            {passados.length>0 && <optgroup label="PASSADOS">
+                                {passados.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                            </optgroup>}
+                        </select>
                     </div>
+
+                    {eventoSel && (
+                        <>
+                            {freqEvento.length===0
+                                ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma presença registrada neste evento.</div>
+                                : <>
+                                    <div style={{ marginBottom:12 }}>
+                                        {freqEvento.map((f,i)=>(
+                                            <div key={f.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #F5F0F0" }}>
+                                                <span style={{ fontSize:12, color:"#AAA", minWidth:20 }}>{i+1}</span>
+                                                <span style={{ fontSize:13, fontWeight:600, color:"#1A1D23", flex:1 }}>{f.membroNome}</span>
+                                                <span style={{ fontSize:12, color:"#888" }}>{f.naipe||"—"}</span>
+                                                <span style={{ fontSize:12, color:"#AAA" }}>{f.dataHora?.seconds ? new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—"}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={gerarPDFEvento}
+                                        style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 20px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                        <Icon name="printer" size={14} color="#fff" /> Gerar PDF — Lista de Presença
+                                    </button>
+                                </>
+                            }
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Declaração individual */}
+            {tipo==="corista" && (
+                <div style={card}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Declaração Individual do Corista</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:16 }}>
+                        <div>
+                            <label style={lbl}>Corista</label>
+                            <select style={{ ...inp, width:"100%" }} value={coristaId} onChange={e=>setCoristaId(e.target.value)}>
+                                <option value="">Selecionar corista...</option>
+                                {members.filter(m=>m.active).sort((a,b)=>a.name>b.name?1:-1).map(m=>(
+                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={lbl}>Data início</label>
+                            <input type="date" style={{ ...inp, width:"100%" }} value={dataInicio} onChange={e=>setDataInicio(e.target.value)} />
+                        </div>
+                        <div>
+                            <label style={lbl}>Data fim</label>
+                            <input type="date" style={{ ...inp, width:"100%" }} value={dataFim} onChange={e=>setDataFim(e.target.value)} />
+                        </div>
+                    </div>
+
+                    {coristaId && (
+                        <>
+                            {freqCorista.length===0
+                                ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhuma participação registrada no período.</div>
+                                : <>
+                                    <div style={{ marginBottom:12 }}>
+                                        {freqCorista.map((f,i)=>(
+                                            <div key={f.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #F5F0F0" }}>
+                                                <span style={{ fontSize:12, color:"#AAA", minWidth:20 }}>{i+1}</span>
+                                                <span style={{ fontSize:12, color:"#888", minWidth:90 }}>{f.eventoData ? new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR") : ""}</span>
+                                                <span style={{ fontSize:13, fontWeight:600, color:"#1A1D23", flex:1 }}>{f.eventoTitulo}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={gerarPDFCorista}
+                                        style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 20px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                        <Icon name="printer" size={14} color="#fff" /> Gerar PDF — Declaração Individual
+                                    </button>
+                                </>
+                            }
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -2736,7 +3108,7 @@ function App() {
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
         frequencia:   <Frequencia config={config} />,
         apresentacao: <Apresentacao config={config} />,
-        declaracao:   <EmBreve label="Declaração Digital" icon="file-text" />,
+        declaracao:   <Declaracao config={config} />,
         relatorios:   <Relatorios config={config} />,
         config:       <Configuracoes config={config} save={save} />,
     };
