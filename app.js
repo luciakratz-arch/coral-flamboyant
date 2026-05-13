@@ -825,7 +825,21 @@ function Agenda({ config, isAdmin }) {
                                         style={{ padding:"7px 14px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                                         Detalhes
                                     </button>
-                                    <button onClick={async()=>{ if(window.confirm("Excluir evento?")) await db.collection("events").doc(e.id).delete(); }}
+                                    <button onClick={async()=>{
+                                        if (!e.grupoId) {
+                                            if (window.confirm("Excluir este evento?")) await db.collection("events").doc(e.id).delete();
+                                        } else {
+                                            const opcao = window.confirm("OK = Excluir ESTE E OS FUTUROS da série.\nCancelar = Excluir SÓ ESTE evento.");
+                                            if (opcao) {
+                                                const snap = await db.collection("events").where("grupoId","==",e.grupoId).get();
+                                                const batch = db.batch();
+                                                snap.docs.forEach(doc => { if (doc.data().date >= e.date) batch.delete(doc.ref); });
+                                                await batch.commit();
+                                            } else {
+                                                await db.collection("events").doc(e.id).delete();
+                                            }
+                                        }
+                                    }}
                                         style={{ width:32, height:32, background:"#FFF0F0", border:"1px solid #F5DADA", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                                         <Icon name="trash-2" size={14} color="#B41020" />
                                     </button>
