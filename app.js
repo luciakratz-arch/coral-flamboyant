@@ -1289,6 +1289,206 @@ function Repertorio({ config, isAdmin }) {
 }
 
 
+
+// ── SALA DE ESTUDOS ───────────────────────────────────────────────────────────
+const TIPOS_MIDIA = [
+    { key:"video",  label:"Vídeo",  icon:"video",       bg:"#EFF6FF", color:"#1565C0" },
+    { key:"pdf",    label:"PDF",    icon:"file-text",   bg:"#FFF5F5", color:"#B41020" },
+    { key:"audio",  label:"Áudio",  icon:"mic",         bg:"#F0FDF4", color:"#2E7D32" },
+    { key:"texto",  label:"Texto",  icon:"align-left",  bg:"#FFFBEB", color:"#92400E" },
+    { key:"foto",   label:"Foto",   icon:"image",       bg:"#F5F3FF", color:"#6D28D9" },
+];
+const CATS_ESTUDOS = ["Vocalise","Aula","Documentário","Reportagem","Concerto","Ensaio","Material de Apoio","Outro"];
+
+function ModalEstudo({ estudo, onClose, config }) {
+    const cor = config.corPrimaria||COR;
+    const vazio = { tipo:"video", categoria:"Aula", title:"", descricao:"", url:"" };
+    const [form, setForm]         = useState(estudo?{...vazio,...estudo}:vazio);
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro]         = useState("");
+
+    async function salvar() {
+        if (!form.title.trim()) { setErro("Título é obrigatório."); return; }
+        if (!form.url.trim())   { setErro("Link é obrigatório."); return; }
+        setSalvando(true);
+        const d = { tipo:form.tipo, categoria:form.categoria, title:form.title, descricao:form.descricao||"", url:form.url };
+        if (estudo) {
+            await db.collection("estudos").doc(estudo.id).update({...d, updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        } else {
+            await db.collection("estudos").add({...d, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            await db.collection("avisos").add({ title:`📚 Novo material: ${form.title}`, text:`Um novo material foi adicionado à Sala de Estudos: "${form.title}" (${TIPOS_MIDIA.find(t=>t.key===form.tipo)?.label||form.tipo} — ${form.categoria}).`, tipo:"auto_estudo", prioridade:"Normal", createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        setSalvando(false);
+        onClose();
+    }
+
+    async function excluir() {
+        if (!window.confirm("Excluir este material?")) return;
+        await db.collection("estudos").doc(estudo.id).delete();
+        onClose();
+    }
+
+    const inp = { width:"100%", padding:"11px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#888", marginBottom:6 };
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ background:"#FAFAFA", borderRadius:"20px 20px 0 0", padding:"24px 20px", width:"100%", maxWidth:600, maxHeight:"92vh", overflowY:"auto" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>{estudo?"Editar material":"Adicionar material"}</div>
+                    <button onClick={onClose} style={{ background:"#EEE", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="x" size={16} color="#666" />
+                    </button>
+                </div>
+
+                {/* Tipo de mídia */}
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Tipo de mídia *</label>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                        {TIPOS_MIDIA.map(t=>(
+                            <button key={t.key} onClick={()=>setForm(f=>({...f,tipo:t.key}))}
+                                style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 16px", borderRadius:10, border:`2px solid ${form.tipo===t.key?cor:"#EEE"}`, background:form.tipo===t.key?cor+"10":"#fff", cursor:"pointer", fontFamily:"inherit", minWidth:70 }}>
+                                <Icon name={t.icon} size={20} color={form.tipo===t.key?cor:"#AAA"} />
+                                <span style={{ fontSize:12, fontWeight:700, color:form.tipo===t.key?cor:"#888" }}>{t.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Categoria */}
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Categoria *</label>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                        {CATS_ESTUDOS.map(c=>(
+                            <button key={c} onClick={()=>setForm(f=>({...f,categoria:c}))}
+                                style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${form.categoria===c?cor:"#EEE"}`, background:form.categoria===c?cor:"#fff", color:form.categoria===c?"#fff":"#555", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                                {c}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Título *</label>
+                    <input style={{ ...inp, borderColor:erro&&!form.title?cor:"#E8E0E0" }} value={form.title} onChange={e=>{setForm(f=>({...f,title:e.target.value}));setErro("");}} placeholder="Nome do material..." autoFocus />
+                    {erro && <div style={{ fontSize:12, color:cor, marginTop:4 }}>{erro}</div>}
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                    <label style={lbl}>Descrição (opcional)</label>
+                    <input style={inp} value={form.descricao||""} onChange={e=>setForm(f=>({...f,descricao:e.target.value}))} placeholder="Breve observação..." />
+                </div>
+
+                <div style={{ marginBottom:20 }}>
+                    <label style={lbl}>Link do YouTube ou Google Drive</label>
+                    <input style={{ ...inp, borderColor:erro&&!form.url?cor:"#E8E0E0" }} value={form.url||""} onChange={e=>{setForm(f=>({...f,url:e.target.value}));setErro("");}} placeholder="https://www.youtube.com/watch?v=... ou https://drive.google.com" />
+                </div>
+
+                <div style={{ display:"flex", gap:10 }}>
+                    {estudo && <button onClick={excluir} style={{ padding:"12px 16px", background:"#FFF0F0", color:"#B41020", border:"1px solid #F5DADA", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Excluir</button>}
+                    <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#F0EAE8", color:"#666", border:"none", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+                    <button onClick={salvar} disabled={salvando} style={{ flex:1, padding:"13px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:salvando?0.7:1 }}>
+                        {salvando?"Salvando...":(estudo?"Salvar":"Adicionar")}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SalaEstudos({ config, isAdmin }) {
+    const { data:estudos, loading } = useCollection("estudos");
+    const [filtro, setFiltro]       = useState("Todos");
+    const [modal, setModal]         = useState(null);
+    const cor = config.corPrimaria||COR;
+
+    if (loading) return <Spinner />;
+
+    // Categorias com contagem
+    const contagem = {};
+    estudos.forEach(e => { contagem[e.categoria] = (contagem[e.categoria]||0)+1; });
+    const cats = ["Todos", ...Object.keys(contagem).sort()];
+
+    const filtrados = filtro==="Todos" ? estudos : estudos.filter(e=>e.categoria===filtro);
+
+    function getMidia(tipo) { return TIPOS_MIDIA.find(t=>t.key===tipo) || TIPOS_MIDIA[0]; }
+
+    return (
+        <div>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                <div>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Sala de Estudos</div>
+                    <div style={{ fontSize:13, color:"#AAA", marginTop:2 }}>Recursos didáticos para o corista</div>
+                </div>
+                {isAdmin && <button onClick={()=>setModal("novo")}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:cor, border:"none", borderRadius:10, fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    <Icon name="plus" size={14} color="#fff" /> Adicionar material
+                </button>}
+            </div>
+
+            {/* Filtros por categoria */}
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", margin:"16px 0 20px" }}>
+                {cats.map(c=>{
+                    const count = c==="Todos" ? estudos.length : (contagem[c]||0);
+                    return (
+                        <button key={c} onClick={()=>setFiltro(c)}
+                            style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${filtro===c?cor:"#EEE"}`, background:filtro===c?cor:"#fff", color:filtro===c?"#fff":"#555", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                            {c} <span style={{ fontSize:11, opacity:0.8 }}>({count})</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Grid de cards */}
+            {filtrados.length === 0
+                ? <div style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"32px", textAlign:"center", color:"#CCC", fontSize:14 }}>Nenhum material encontrado.</div>
+                : <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:16 }}>
+                    {filtrados.map(e => {
+                        const midia = getMidia(e.tipo);
+                        return (
+                            <div key={e.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
+                                {/* Thumbnail */}
+                                <div style={{ height:120, background:midia.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                    <Icon name={midia.icon} size={40} color={midia.color} />
+                                </div>
+                                {/* Conteúdo */}
+                                <div style={{ padding:"12px 14px" }}>
+                                    <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
+                                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:midia.bg, color:midia.color, fontWeight:700 }}>{midia.label}</span>
+                                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:"#F5F5F5", color:"#666", fontWeight:600 }}>{e.categoria}</span>
+                                    </div>
+                                    <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:4, lineHeight:1.3 }}>{e.title}</div>
+                                    {e.descricao && <div style={{ fontSize:12, color:"#AAA", marginBottom:10 }}>{e.descricao}</div>}
+                                    <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:8 }}>
+                                        <a href={e.url} target="_blank" rel="noreferrer"
+                                            style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px", background:cor, color:"#fff", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>
+                                            <Icon name="play" size={13} color="#fff" /> Abrir
+                                        </a>
+                                        {isAdmin && <>
+                                            <button onClick={()=>setModal(e)} style={{ width:32, height:32, background:"#F5F5F5", border:"none", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                                <Icon name="pencil" size={13} color="#888" />
+                                            </button>
+                                            <button onClick={async()=>{ if(window.confirm("Excluir este material?")) await db.collection("estudos").doc(e.id).delete(); }}
+                                                style={{ width:32, height:32, background:"#FFF0F0", border:"none", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                                <Icon name="trash-2" size={13} color="#B41020" />
+                                            </button>
+                                        </>}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            }
+
+            {modal && <ModalEstudo estudo={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+        </div>
+    );
+}
+
+
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
 function EmBreve({ label, icon }) {
     return <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:80, gap:12 }}>
@@ -1347,7 +1547,7 @@ function App() {
         painel:       <Painel user={user} config={config} />,
         integrantes:  <Integrantes config={config} />,
         musicas:      <Repertorio config={config} isAdmin={isAdmin} />,
-        estudos:      <EmBreve label="Sala de Estudos"    icon="graduation-cap" />,
+        estudos:      <SalaEstudos config={config} isAdmin={isAdmin} />,
         agenda:       <Agenda config={config} isAdmin={isAdmin} />,
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
         frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
