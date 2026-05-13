@@ -147,6 +147,115 @@ function CadastroPublico({ config }) {
     );
 }
 
+
+// ── PLAYER MODAL UNIVERSAL ────────────────────────────────────────────────────
+function PlayerModal({ url, title, onClose, letra, naipes }) {
+    if (!url) return null;
+
+    function getEmbedUrl(url) {
+        // YouTube
+        const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+        if (ytMatch) return { type:"youtube", embed:`https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1` };
+
+        // Google Drive — vídeo/áudio/pdf
+        const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (driveMatch) {
+            const id = driveMatch[1];
+            if (url.includes("export=view") || url.match(/\.(jpg|jpeg|png|gif|webp)/i))
+                return { type:"image", embed:`https://drive.google.com/uc?export=view&id=${id}` };
+            if (url.match(/\.(mp3|wav|ogg|m4a)/i))
+                return { type:"audio", embed:`https://drive.google.com/file/d/${id}/preview` };
+            // PDF ou vídeo do Drive
+            return { type:"iframe", embed:`https://drive.google.com/file/d/${id}/preview` };
+        }
+
+        // Link direto de áudio
+        if (url.match(/\.(mp3|wav|ogg|m4a)/i)) return { type:"audio", embed:url };
+
+        // Link direto de PDF
+        if (url.match(/\.pdf/i)) return { type:"pdf", embed:url };
+
+        // Link direto de imagem
+        if (url.match(/\.(jpg|jpeg|png|gif|webp)/i)) return { type:"image", embed:url };
+
+        // Qualquer outro link — iframe genérico
+        return { type:"iframe", embed:url };
+    }
+
+    const { type, embed } = getEmbedUrl(url);
+
+    return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:500, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:16 }}
+            onClick={e=>e.target===e.currentTarget&&onClose()}>
+            <div style={{ width:"100%", maxWidth:800, background:"#1A1D23", borderRadius:16, overflow:"hidden", boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }}>
+                {/* Header */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", borderBottom:"1px solid #333" }}>
+                    <div style={{ fontSize:14, fontWeight:600, color:"#fff", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:12 }}>{title||"Reproduzindo"}</div>
+                    <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <Icon name="x" size={16} color="#fff" />
+                    </button>
+                </div>
+
+                {/* Player */}
+                <div style={{ background:"#000" }}>
+                    {(type==="youtube"||type==="iframe") && url !== "letra" && (
+                        <iframe src={embed} style={{ width:"100%", height: window.innerWidth < 600 ? 220 : 450, border:"none", display:"block" }}
+                            allow="autoplay; fullscreen" allowFullScreen title={title} />
+                    )}
+                    {type==="audio" && (
+                        <div style={{ padding:"32px 24px", textAlign:"center", background:"#1A1D23" }}>
+                            <Icon name="music" size={48} color="#555" />
+                            <div style={{ marginTop:16 }}>
+                                <iframe src={embed} style={{ width:"100%", height:80, border:"none" }} allow="autoplay" title={title} />
+                            </div>
+                        </div>
+                    )}
+                    {type==="image" && (
+                        <div style={{ padding:16, textAlign:"center", background:"#111" }}>
+                            <img src={embed} alt={title} style={{ maxWidth:"100%", maxHeight:500, objectFit:"contain", borderRadius:8 }} />
+                        </div>
+                    )}
+                    {type==="pdf" && (
+                        <iframe src={embed} style={{ width:"100%", height: window.innerWidth < 600 ? 400 : 600, border:"none", display:"block" }} title={title} />
+                    )}
+                </div>
+
+                {/* Letra */}
+                {letra && (
+                    <div style={{ padding:"20px 24px", background:"#1A1D23", maxHeight:400, overflowY:"auto" }}>
+                        <pre style={{ fontSize:14, color:"#EEE", lineHeight:1.8, fontFamily:"inherit", whiteSpace:"pre-wrap", margin:0 }}>{letra}</pre>
+                    </div>
+                )}
+                {/* Naipes */}
+                {naipes && (
+                    <div style={{ padding:"16px 18px", background:"#1A1D23" }}>
+                        <div style={{ fontSize:12, color:"#AAA", marginBottom:12, textTransform:"uppercase", letterSpacing:1 }}>Áudios por naipe</div>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            {[["soprano","Soprano"],["mezzoSoprano","Mezzo-soprano"],["contralto","Contralto"],["tenor","Tenor"],["baritono","Barítono"],["baixo","Baixo"]].map(([key,label])=>
+                                naipes[key] ? (
+                                    <button key={key} onClick={()=>window.open(naipes[key],"_blank")}
+                                        style={{ padding:"8px 12px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, color:"#EEE", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:6 }}>
+                                        <Icon name="play-circle" size={14} color="#AAA" /> {label}
+                                    </button>
+                                ) : null
+                            )}
+                        </div>
+                    </div>
+                )}
+                {/* Abrir externo */}
+                {url && url !== "letra" && (
+                    <div style={{ padding:"10px 18px", textAlign:"right", borderTop:"1px solid #333" }}>
+                        <a href={url} target="_blank" rel="noreferrer"
+                            style={{ fontSize:12, color:"#AAA", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:5 }}>
+                            <Icon name="external-link" size={12} color="#AAA" /> Abrir em nova aba
+                        </a>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 function Login({ members, onLogin, config }) {
     const [tela, setTela]       = useState(null);
@@ -1220,13 +1329,14 @@ function Repertorio({ config, isAdmin }) {
         return ok && of;
     });
 
+    const [player, setPlayer] = useState(null);
     function MaterialBadge({ label, icon, url }) {
         if (!url) return null;
         return (
-            <a href={url} target="_blank" rel="noreferrer"
-                style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, textDecoration:"none", marginRight:4, marginBottom:4 }}>
+            <button onClick={e=>{e.stopPropagation();setPlayer({url,title:label});}}
+                style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, border:"none", cursor:"pointer", fontFamily:"inherit", marginRight:4, marginBottom:4 }}>
                 <span style={{ fontSize:12 }}>{icon}</span> {label}
-            </a>
+            </button>
         );
     }
 
@@ -1272,8 +1382,8 @@ function Repertorio({ config, isAdmin }) {
                                     <MaterialBadge label="Áudio Original" icon="🎵" url={s.audioOriginal} />
                                     <MaterialBadge label="Arranjo" icon="🎵" url={s.audioArranjo} />
                                     <MaterialBadge label="Playback" icon="🎧" url={s.playback} />
-                                    {temNaipes(s) && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, marginRight:4, marginBottom:4 }}>🎶 Naipes</span>}
-                                    {s.letra && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5F5F5", color:"#666", fontSize:11, fontWeight:600, marginRight:4, marginBottom:4 }}>📄 Letra</span>}
+                                    {temNaipes(s) && <button onClick={e=>{e.stopPropagation();setPlayer({url:s.soprano||s.mezzoSoprano||s.contralto||s.tenor||s.baritono||s.baixo,title:"Naipes — "+s.title,naipes:{soprano:s.soprano,mezzoSoprano:s.mezzoSoprano,contralto:s.contralto,tenor:s.tenor,baritono:s.baritono,baixo:s.baixo}});}} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5EAEA", color:cor, fontSize:11, fontWeight:600, border:"none", cursor:"pointer", fontFamily:"inherit", marginRight:4, marginBottom:4 }}>🎶 Naipes</button>}
+                                    {s.letra && <button onClick={e=>{e.stopPropagation();setPlayer({url:"letra",title:s.title,letra:s.letra});}} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:10, background:"#F5F5F5", color:"#666", fontSize:11, fontWeight:600, border:"none", cursor:"pointer", fontFamily:"inherit", marginRight:4, marginBottom:4 }}>📄 Letra</button>}
                                 </div>
                             </div>
                         );
@@ -1284,6 +1394,7 @@ function Repertorio({ config, isAdmin }) {
             <div style={{ fontSize:12, color:"#AAA", marginTop:12, textAlign:"right" }}>{filtradas.length} música{filtradas.length!==1?"s":""}</div>
 
             {modal && <ModalMusica musica={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+            {player && <PlayerModal url={player.url} title={player.title} onClose={()=>setPlayer(null)} letra={player.letra} naipes={player.naipes} />}
         </div>
     );
 }
@@ -1401,6 +1512,7 @@ function SalaEstudos({ config, isAdmin }) {
     const { data:estudos, loading } = useCollection("estudos");
     const [filtro, setFiltro]       = useState("Todos");
     const [modal, setModal]         = useState(null);
+    const [player, setPlayer]       = useState(null);
     const cor = config.corPrimaria||COR;
 
     if (loading) return <Spinner />;
@@ -1462,10 +1574,10 @@ function SalaEstudos({ config, isAdmin }) {
                                     <div style={{ fontSize:13, fontWeight:700, color:"#1A1D23", marginBottom:4, lineHeight:1.3 }}>{e.title}</div>
                                     {e.descricao && <div style={{ fontSize:12, color:"#AAA", marginBottom:10 }}>{e.descricao}</div>}
                                     <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:8 }}>
-                                        <a href={e.url} target="_blank" rel="noreferrer"
-                                            style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px", background:cor, color:"#fff", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>
+                                        <button onClick={()=>setPlayer({url:e.url,title:e.title})}
+                                            style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"8px", background:cor, color:"#fff", borderRadius:8, fontSize:13, fontWeight:700, border:"none", cursor:"pointer", fontFamily:"inherit" }}>
                                             <Icon name="play" size={13} color="#fff" /> Abrir
-                                        </a>
+                                        </button>
                                         {isAdmin && <>
                                             <button onClick={()=>setModal(e)} style={{ width:32, height:32, background:"#F5F5F5", border:"none", borderRadius:8, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                                                 <Icon name="pencil" size={13} color="#888" />
@@ -1484,6 +1596,7 @@ function SalaEstudos({ config, isAdmin }) {
             }
 
             {modal && <ModalEstudo estudo={modal==="novo"?null:modal} onClose={()=>setModal(null)} config={config} />}
+            {player && <PlayerModal url={player.url} title={player.title} onClose={()=>setPlayer(null)} />}
         </div>
     );
 }
