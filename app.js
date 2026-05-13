@@ -3248,6 +3248,336 @@ function EmBreve({ label, icon }) {
     </div>;
 }
 
+
+// ── PAINEL DO CORISTA ─────────────────────────────────────────────────────────
+function PainelCorista({ user, config }) {
+    const { data:avisos }  = useCollection("avisos");
+    const { data:events }  = useCollection("events","date");
+    const { data:songs }   = useCollection("songs");
+    const [mes, setMes]    = useState(new Date().getMonth());
+    const [ano, setAno]    = useState(new Date().getFullYear());
+    const [confirmacoes, setConfirmacoes] = useState({});
+    const [naipeOpen, setNaipeOpen] = useState(null);
+    const cor    = config.corPrimaria||COR;
+    const naipe  = user.voice||"";
+    const naipeKey = { "Soprano":"soprano","Mezzo-soprano":"mezzoSoprano","Contralto":"contralto","Tenor":"tenor","Barítono":"baritono","Baixo":"baixo" }[naipe]||"soprano";
+
+    // Carregar confirmações do corista
+    useEffect(()=>{
+        if (!user.name) return;
+        db.collection("confirmacoes").where("membroNome","==",user.name)
+            .onSnapshot(snap=>{
+                const m = {};
+                snap.docs.forEach(d=>{ m[d.data().eventoId] = d.data().status; });
+                setConfirmacoes(m);
+            });
+    },[user.name]);
+
+    async function confirmar(eventoId, status) {
+        const snap = await db.collection("confirmacoes")
+            .where("membroNome","==",user.name).where("eventoId","==",eventoId).get();
+        if (!snap.empty) {
+            await snap.docs[0].ref.update({ status, updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+        } else {
+            await db.collection("confirmacoes").add({
+                membroNome: user.name, eventoId, status,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
+    function navMes(dir) {
+        let nm=mes+dir, na=ano;
+        if(nm>11){nm=0;na++;} if(nm<0){nm=11;na--;}
+        setMes(nm); setAno(na);
+    }
+
+    const eventosMes = events
+        .filter(e=>{ if(!e.date) return false; const [y,m]=e.date.split("-"); return parseInt(m)-1===mes&&parseInt(y)===ano; })
+        .sort((a,b)=>a.date>b.date?1:-1);
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const prioColor = { Urgente:cor, Alta:"#1565C0", Normal:"#E65100" };
+    const prioBg    = { Urgente:"#FFF5F5", Alta:"#EFF6FF", Normal:"#fff" };
+
+    return (
+        <div>
+            {/* Saudação */}
+            <div style={{ marginBottom:24 }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, fontWeight:700, color:"#1A1D23" }}>
+                    Olá, {user.name.split(" ")[0]}! 👋
+                </div>
+                <div style={{ fontSize:13, color:"#AAA", marginTop:4 }}>
+                    Confira os avisos e a agenda do coral · Seu naipe: <span style={{ color:cor, fontWeight:700 }}>{naipe||"—"}</span>
+                </div>
+            </div>
+
+            {/* Avisos */}
+            {avisos.length>0 && <>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                    <Icon name="megaphone" size={16} color={cor} />
+                    <div style={{ fontSize:12, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1 }}>Avisos</div>
+                </div>
+                {avisos.slice(0,4).map(a=>{
+                    const isAuto = a.tipo && a.tipo!=="manual";
+                    const bc = isAuto?"#F59E0B":(prioColor[a.prioridade]||cor);
+                    const bg = isAuto?"#FFFBEB":(prioBg[a.prioridade]||"#fff");
+                    return (
+                        <div key={a.id} style={{ ...card, borderLeft:`3px solid ${bc}`, background:bg, padding:"12px 16px" }}>
+                            {a.prioridade && a.prioridade!=="Normal" && !isAuto && (
+                                <div style={{ fontSize:10, fontWeight:700, color:bc, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{a.prioridade}</div>
+                            )}
+                            <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:4 }}>{a.title||a.titulo}</div>
+                            <div style={{ fontSize:13, color:"#555", lineHeight:1.5 }}>{a.text||a.texto}</div>
+                            {a.createdAt?.seconds && (
+                                <div style={{ fontSize:11, color:"#AAA", marginTop:6 }}>
+                                    {new Date(a.createdAt.seconds*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"long"})}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </>}
+
+            {/* Agenda do mês */}
+            <div style={{ display:"flex", alignItems:"center", gap:8, margin:"20px 0 12px" }}>
+                <Icon name="calendar" size={16} color={cor} />
+                <div style={{ fontSize:12, fontWeight:700, color:cor, textTransform:"uppercase", letterSpacing:1 }}>Agenda</div>
+            </div>
+
+            <div style={{ ...card, padding:0, overflow:"hidden" }}>
+                {/* Navegação mês */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px", borderBottom:"1px solid #F5EAEA" }}>
+                    <button onClick={()=>navMes(-1)} style={{ width:32,height:32,border:"1px solid #EEE",borderRadius:8,background:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                        <Icon name="chevron-left" size={16} color="#666" />
+                    </button>
+                    <div style={{ textAlign:"center" }}>
+                        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#1A1D23" }}>
+                            {MONTHS_PT[mes].charAt(0).toUpperCase()+MONTHS_PT[mes].slice(1)} De {ano}
+                        </div>
+                        <div style={{ fontSize:12, color:"#AAA" }}>{eventosMes.length} atividade{eventosMes.length!==1?"s":""}</div>
+                    </div>
+                    <button onClick={()=>navMes(1)} style={{ width:32,height:32,border:"1px solid #EEE",borderRadius:8,background:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                        <Icon name="chevron-right" size={16} color="#666" />
+                    </button>
+                </div>
+
+                {/* Eventos do mês */}
+                <div style={{ padding:"12px 16px" }}>
+                    {eventosMes.length===0
+                        ? <div style={{ textAlign:"center", padding:"24px", color:"#CCC", fontSize:13 }}>Nenhuma atividade neste mês.</div>
+                        : eventosMes.map(e=>{
+                            const dt = new Date(e.date+"T12:00:00");
+                            const dia = dt.getDate();
+                            const semana = WEEKDAYS_PT[dt.getDay()].toUpperCase();
+                            const conf = confirmacoes[e.id];
+                            const tipoColor = { Ensaio:"#1565C0", Apresentação:"#2E7D32", Reunião:"#E65100", Gravação:"#7B1FA2" }[e.tipo]||"#888";
+                            // Áudio do naipe
+                            const audioNaipe = e[naipeKey]||null;
+                            const songNaipe  = songs.find(s=>s.id===e.setlist?.[0]?.id);
+                            const urlNaipe   = songNaipe?.[naipeKey]||null;
+
+                            return (
+                                <div key={e.id} style={{ display:"flex", gap:14, padding:"14px 0", borderBottom:"1px solid #F9F5F5", alignItems:"flex-start" }}>
+                                    {/* Data */}
+                                    <div style={{ minWidth:52, textAlign:"center" }}>
+                                        <div style={{ fontSize:28, fontWeight:700, color:cor, lineHeight:1 }}>{dia}</div>
+                                        <div style={{ fontSize:10, color:"#AAA", fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>{semana}</div>
+                                    </div>
+
+                                    {/* Conteúdo */}
+                                    <div style={{ flex:1 }}>
+                                        {e.tipo && <span style={{ fontSize:11, padding:"2px 8px", borderRadius:10, background:tipoColor+"18", color:tipoColor, fontWeight:700, display:"inline-block", marginBottom:6 }}>{e.tipo}</span>}
+                                        <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:6 }}>{e.title}</div>
+
+                                        {/* Detalhes */}
+                                        <div style={{ display:"flex", flexWrap:"wrap", gap:12, marginBottom:6 }}>
+                                            {e.timeChegada && <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#666" }}><Icon name="clock" size={12} color="#AAA" /> Chegada: {e.timeChegada}</div>}
+                                            {e.local && <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#666" }}>
+                                                <Icon name="map-pin" size={12} color="#AAA" />
+                                                {e.mapsUrl ? <a href={e.mapsUrl} target="_blank" rel="noreferrer" style={{ color:cor, textDecoration:"none" }}>{e.local}</a> : e.local}
+                                            </div>}
+                                            {e.traje && <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#666" }}><Icon name="shirt" size={12} color="#AAA" /> {e.traje}</div>}
+                                        </div>
+                                        {e.notes && <div style={{ fontSize:12, color:"#AAA", fontStyle:"italic", marginBottom:8 }}>{e.notes}</div>}
+
+                                        {/* Estudar naipe */}
+                                        {urlNaipe && (
+                                            <div style={{ marginBottom:8 }}>
+                                                <button onClick={()=>setNaipeOpen(naipeOpen===e.id?null:e.id)}
+                                                    style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", background:cor+"15", border:`1px solid ${cor}33`, borderRadius:20, fontSize:12, fontWeight:600, color:cor, cursor:"pointer", fontFamily:"inherit" }}>
+                                                    <Icon name="music" size={12} color={cor} />
+                                                    Estudar meu naipe ({naipe})
+                                                    <Icon name={naipeOpen===e.id?"chevron-up":"chevron-down"} size={12} color={cor} />
+                                                </button>
+                                                {naipeOpen===e.id && (
+                                                    <div style={{ marginTop:8 }}>
+                                                        <iframe src={(()=>{
+                                                            const url=urlNaipe;
+                                                            const yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                                                            if(yt) return `https://www.youtube.com/embed/${yt[1]}?autoplay=1`;
+                                                            const dr=url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                                                            if(dr) return `https://drive.google.com/file/d/${dr[1]}/preview`;
+                                                            return url;
+                                                        })()} style={{ width:"100%", height:120, border:"none", borderRadius:8 }} allow="autoplay" title="Naipe" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Confirmação */}
+                                        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                                            <span style={{ fontSize:12, color:"#AAA" }}>Sua presença:</span>
+                                            <button onClick={()=>confirmar(e.id,"vou")}
+                                                style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:20, border:`1px solid ${conf==="vou"?"#2E7D32":"#EEE"}`, background:conf==="vou"?"#E8F5E9":"#fff", color:conf==="vou"?"#2E7D32":"#888", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                                                <Icon name="check-circle" size={13} color={conf==="vou"?"#2E7D32":"#CCC"} /> Vou participar
+                                            </button>
+                                            <button onClick={()=>confirmar(e.id,"nao")}
+                                                style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:20, border:`1px solid ${conf==="nao"?cor:"#EEE"}`, background:conf==="nao"?"#FFF5F5":"#fff", color:conf==="nao"?cor:"#888", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                                                <Icon name="x-circle" size={13} color={conf==="nao"?cor:"#CCC"} /> Não vou
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    }
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── MINHA DECLARAÇÃO (corista) ────────────────────────────────────────────────
+function MinhaDeclaracao({ user, config }) {
+    const { data:frequencias } = useCollection("frequencias","dataHora");
+    const [dataInicio, setDataInicio] = useState(new Date().getFullYear()+"-01-01");
+    const [dataFim, setDataFim]       = useState(todayStr());
+    const [textos, setTextos]         = useState({});
+    const cor = config.corPrimaria||COR;
+
+    useEffect(()=>{
+        db.collection("config").doc("relatorio").get().then(doc=>{ if(doc.exists) setTextos(doc.data()); });
+    },[]);
+
+    const freqCorista = frequencias.filter(f=>
+        f.membroNome===user.name && f.eventoData>=dataInicio && f.eventoData<=dataFim
+    ).sort((a,b)=>a.eventoData>b.eventoData?1:-1);
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const inp  = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+    const lbl  = { display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 };
+
+    function gerarPDF() {
+        if (freqCorista.length===0) { alert("Nenhuma participação registrada no período."); return; }
+        const nomeApp    = config.nomeApp    || "Flamboyant Coral";
+        const logoUrl    = config.logoUrl    || LOGO_URL;
+        const cidade     = textos.cidade     || "Goiânia – GO";
+        const maestro    = textos.maestro    || "Maestro";
+        const produtora  = textos.produtora  || "Lucia Kratz";
+        const sigLucia   = textos.sigLucia   || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
+        const sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+        const hoje       = new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+        const periodoFmt = `${new Date(dataInicio+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(dataFim+"T12:00:00").toLocaleDateString("pt-BR")}`;
+
+        const linhas = freqCorista.map((f,i)=>`
+            <tr><td>${i+1}</td>
+            <td>${f.eventoData?new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR"):""}</td>
+            <td>${f.eventoTitulo||"—"}</td></tr>`).join("");
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:0}
+  @media print{@page{margin:2cm}}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${cor};padding-bottom:14px;margin-bottom:20px}
+  .logo{width:54px;height:54px;object-fit:contain}
+  .titulo{text-align:center;font-size:17px;font-weight:bold;color:${cor};text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}
+  .subtitulo{text-align:center;font-size:12px;color:#666;margin-bottom:20px}
+  .info-box{border:1px solid #EEE;border-radius:6px;padding:12px 16px;margin-bottom:16px;background:#FAFAFA}
+  .info-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px}
+  .info-lbl{font-weight:bold;color:${cor};min-width:100px;font-size:11px;text-transform:uppercase}
+  .decl{border-left:3px solid ${cor};padding:10px 14px;margin:16px 0;background:#FAFAFA;font-size:13px;line-height:1.7}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{background:${cor};color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}
+  td{padding:7px 10px;border-bottom:1px solid #EEE;font-size:12px}
+  tr:nth-child(even) td{background:#FAFAFA}
+  .assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}
+  .assin img{height:52px;object-fit:contain;display:block;margin:0 auto 6px}
+  .assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}
+  .assin-nome{font-weight:bold;font-size:12px}
+  .assin-cargo{font-size:10px;color:#888}
+  .rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}
+</style></head><body>
+<div class="header">
+  <img src="${logoUrl}" class="logo"/>
+  <div style="text-align:right;font-size:11px;color:#666"><strong>${nomeApp}</strong><br>${cidade}</div>
+</div>
+<div class="titulo">Declaração de Participação</div>
+<div class="subtitulo">${nomeApp}</div>
+<div class="info-box">
+  <div class="info-row"><span class="info-lbl">Nome:</span><span><strong>${user.name}</strong></span></div>
+  <div class="info-row"><span class="info-lbl">Naipe:</span><span>${user.voice||"—"}</span></div>
+  <div class="info-row"><span class="info-lbl">Período:</span><span>${periodoFmt}</span></div>
+  <div class="info-row"><span class="info-lbl">Participações:</span><span>${freqCorista.length} evento${freqCorista.length!==1?"s":""}</span></div>
+</div>
+<div class="decl">
+  Declaramos para os devidos fins que <strong>${user.name}</strong>${user.voice?", "+user.voice:""}, 
+  é integrante do ${nomeApp}, participando ativamente das atividades do grupo no período de ${periodoFmt},
+  com registro de presença em <strong>${freqCorista.length} evento${freqCorista.length!==1?"s":""}</strong> conforme detalhado abaixo.
+</div>
+<table><thead><tr><th>#</th><th>Data</th><th>Evento</th></tr></thead>
+<tbody>${linhas}</tbody></table>
+<div class="assinaturas">
+  <div class="assin">${sigMaestro?`<img src="${sigMaestro}"/>`:"<div style='height:52px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${maestro}</div><div class="assin-cargo">Maestro – ${nomeApp}</div></div>
+  </div>
+  <div class="assin">${sigLucia?`<img src="${sigLucia}"/>`:"<div style='height:52px'></div>"}
+    <div class="assin-linha"><div class="assin-nome">${produtora}</div><div class="assin-cargo">Produtora – ${nomeApp}</div></div>
+  </div>
+</div>
+<div class="rodape">Documento gerado em ${hoje} pelo sistema de gestão do ${nomeApp}.</div>
+</body></html>`;
+        const win = window.open("","_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(()=>win.print(), 800);
+    }
+
+    return (
+        <div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor, marginBottom:4 }}>Minha Declaração</div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Declaração de participação nas atividades do coral</div>
+
+            <div style={card}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                    <div><label style={lbl}>Data início</label><input type="date" style={{ ...inp, width:"100%" }} value={dataInicio} onChange={e=>setDataInicio(e.target.value)} /></div>
+                    <div><label style={lbl}>Data fim</label><input type="date" style={{ ...inp, width:"100%" }} value={dataFim} onChange={e=>setDataFim(e.target.value)} /></div>
+                </div>
+
+                {freqCorista.length===0
+                    ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"20px 0" }}>Nenhuma participação registrada no período.</div>
+                    : <>
+                        <div style={{ marginBottom:14 }}>
+                            {freqCorista.map((f,i)=>(
+                                <div key={f.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #F5F0F0" }}>
+                                    <span style={{ fontSize:12, color:"#AAA", minWidth:20 }}>{i+1}</span>
+                                    <span style={{ fontSize:12, color:"#888", minWidth:90 }}>{f.eventoData?new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR"):""}</span>
+                                    <span style={{ fontSize:13, fontWeight:600, color:"#1A1D23", flex:1 }}>{f.eventoTitulo}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={gerarPDF}
+                            style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 20px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                            <Icon name="printer" size={14} color="#fff" /> Gerar Declaração PDF
+                        </button>
+                    </>
+                }
+            </div>
+        </div>
+    );
+}
+
+
 // ── NAV ───────────────────────────────────────────────────────────────────────
 const NAV_ADMIN = [
     { key:"painel",       label:"Painel",            icon:"layout-dashboard" },
@@ -3263,10 +3593,10 @@ const NAV_ADMIN = [
     { key:"config",       label:"Configurações",      icon:"settings" },
 ];
 const NAV_CORISTA = [
-    { key:"agenda",  label:"Agenda",   icon:"calendar" },
-    { key:"musicas", label:"Músicas",  icon:"music" },
-    { key:"estudos", label:"Estudos",  icon:"graduation-cap" },
-    { key:"avisos",  label:"Avisos",   icon:"megaphone" },
+    { key:"inicio",      label:"Início",          icon:"home" },
+    { key:"musicas",     label:"Músicas",          icon:"music" },
+    { key:"estudos",     label:"Sala de Estudos",  icon:"graduation-cap" },
+    { key:"declaracao",  label:"Minha Declaração", icon:"file-text" },
 ];
 
 // ── APP ───────────────────────────────────────────────────────────────────────
@@ -3284,7 +3614,7 @@ function App() {
     function handleLogin(u) {
         localStorage.setItem("cf_user", JSON.stringify(u));
         setUser(u);
-        setTab(u.isAdmin ? "painel" : "agenda");
+        setTab(u.isAdmin ? "painel" : "inicio");
         // Registrar acesso do corista
         if (u.role === "corista" && u.name) {
             const agora = new Date();
@@ -3320,14 +3650,15 @@ function App() {
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
         frequencia:   <Frequencia config={config} />,
         apresentacao: <Apresentacao config={config} />,
-        declaracao:   <Declaracao config={config} />,
+        declaracao:   isAdmin ? <Declaracao config={config} /> : <MinhaDeclaracao user={user} config={config} />,
         relatorios:   <Relatorios config={config} />,
         config:       <Configuracoes config={config} save={save} />,
+        inicio:       <PainelCorista user={user} config={config} />,
     };
 
     const mobileNav = isAdmin
         ? [NAV_ADMIN[0], NAV_ADMIN[1], NAV_ADMIN[4], NAV_ADMIN[5], NAV_ADMIN[10]]
-        : NAV_CORISTA;
+        : [NAV_CORISTA[0], NAV_CORISTA[1], NAV_CORISTA[2], NAV_CORISTA[3]];
 
     return (
         <div style={{ display:"flex", minHeight:"100vh", background:fundo }}>
@@ -3339,7 +3670,7 @@ function App() {
                         </div>
                         <div>
                             <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, fontWeight:700, color:cor, lineHeight:1.2 }}>{config.nomeApp||"Flamboyant Coral"}</div>
-                            <div style={{ fontSize:11, color:"#AAA" }}>{config.subtitulo||"Portal de Gestão"}</div>
+                            <div style={{ fontSize:11, color:"#AAA" }}>{isAdmin ? (config.subtitulo||"Portal de Gestão") : "Área do Corista"}</div>
                         </div>
                     </div>
                 </div>
@@ -3353,7 +3684,7 @@ function App() {
                     ))}
                 </nav>
                 <div style={{ padding:"12px 16px", borderTop:"1px solid #F5EAEA" }}>
-                    <div style={{ fontSize:13, color:"#AAA", marginBottom:2 }}>{isAdmin?"Administrador":"Corista"}</div>
+                    <div style={{ fontSize:13, color:"#AAA", marginBottom:2 }}>{isAdmin?"Administrador":user.voice||"Corista"}</div>
                     <div style={{ fontSize:14, fontWeight:600, color:"#1A1D23", marginBottom:10 }}>{user.name}</div>
                     <button onClick={handleLogout} style={{ width:"100%", padding:"9px", background:fundo, color:cor, border:`1px solid ${cor}33`, borderRadius:8, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Sair</button>
                 </div>
