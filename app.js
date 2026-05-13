@@ -385,6 +385,7 @@ function Login({ members, onLogin, config }) {
 
     function entrarAdmin() { if (senha==="1234") onLogin({name:"Gestor",isAdmin:true,role:"admin"}); else setErro("Senha incorreta."); }
     function entrarCorista(m) { onLogin({name:m.name,isAdmin:false,role:"corista",voice:m.voice}); }
+    function entrarRH() { if (senha==="flamboyant1234") onLogin({name:"RH",isAdmin:false,role:"rh"}); else setErro("Senha incorreta."); }
 
     const s = {
         wrap:   { minHeight:"100vh", background:config.corFundo||COR_FUNDO, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 20px" },
@@ -441,6 +442,27 @@ function Login({ members, onLogin, config }) {
                 <div style={{ display:"flex", gap:10 }}>
                     <button style={s.btnSec} onClick={()=>{setTela(null);setErro("");}}>Voltar</button>
                     <button style={s.btnPri} onClick={entrarAdmin}>Entrar</button>
+                </div>
+            </div>}
+
+            {tela==="rh" && <div style={s.card}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+                    <div style={{ width:36, height:36, background:"rgba(21,101,192,0.08)", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <Icon name="briefcase" size={17} color="#1565C0" />
+                    </div>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, fontWeight:700, color:"#1A1D23" }}>RH — Pessoas e Cultura</div>
+                </div>
+                <div style={{ position:"relative", marginBottom:12 }}>
+                    <input style={{ ...s.inp, paddingRight:44 }} type={mostrar?"text":"password"} placeholder="Senha de acesso" value={senha}
+                        onChange={e=>{setSenha(e.target.value);setErro("");}} onKeyDown={e=>e.key==="Enter"&&entrarRH()} autoFocus />
+                    <button onClick={()=>setMostrar(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer" }}>
+                        <Icon name={mostrar?"eye-off":"eye"} size={16} color="#AAA" />
+                    </button>
+                </div>
+                {erro && <div style={{ fontSize:13, color:cor, marginBottom:10 }}>{erro}</div>}
+                <div style={{ display:"flex", gap:10 }}>
+                    <button style={s.btnSec} onClick={()=>{setTela(null);setErro("");}}>Voltar</button>
+                    <button style={{...s.btnPri, background:"#1565C0"}} onClick={entrarRH}>Entrar</button>
                 </div>
             </div>}
 
