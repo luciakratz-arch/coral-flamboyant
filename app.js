@@ -1937,6 +1937,99 @@ function Apresentacao({ config }) {
 
 
 
+
+// ── FREQUÊNCIA DE ACESSO ──────────────────────────────────────────────────────
+function FrequenciaAcesso({ config }) {
+    const [acessos, setAcessos] = useState([]);
+    const cor = config.corPrimaria||COR;
+
+    useEffect(()=>{
+        db.collection("acessos").onSnapshot(snap=>{
+            setAcessos(snap.docs.map(d=>({id:d.id,...d.data()})));
+        });
+    },[]);
+
+    const hoje = new Date();
+    const trintaDiasAtras = new Date(hoje);
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate()-30);
+    const trintaStr = trintaDiasAtras.toISOString().split("T")[0];
+
+    // Agrupar por corista
+    const porCorista = {};
+    acessos.forEach(a=>{
+        if (!a.nome) return;
+        if (!porCorista[a.nome]) porCorista[a.nome]={ total:0, ultimos30:0, ultimoAcesso:null };
+        porCorista[a.nome].total++;
+        if (a.data && a.data >= trintaStr) porCorista[a.nome].ultimos30++;
+        const ts = a.dataHora?.seconds;
+        if (ts && (!porCorista[a.nome].ultimoAcesso || ts > porCorista[a.nome].ultimoAcesso)) {
+            porCorista[a.nome].ultimoAcesso = ts;
+        }
+    });
+
+    const lista = Object.entries(porCorista).sort((a,b)=>b[1].total-a[1].total);
+    const maxTotal = Math.max(...lista.map(([,v])=>v.total), 1);
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"16px 20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+
+    return (
+        <div style={card}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                <Icon name="smartphone" size={16} color="#2E7D32" />
+                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Frequência de Acesso ao App</div>
+            </div>
+            <div style={{ fontSize:12, color:"#AAA", marginBottom:16 }}>Quantas vezes cada corista entrou no aplicativo (total e últimos 30 dias)</div>
+
+            {lista.length === 0
+                ? <div style={{ fontSize:13, color:"#CCC", textAlign:"center", padding:"16px 0" }}>Nenhum acesso registrado ainda.</div>
+                : <>
+                    {/* Gráfico de barras horizontal */}
+                    <div style={{ marginBottom:16 }}>
+                        {lista.slice(0,10).map(([nome, dados])=>(
+                            <div key={nome} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                                <div style={{ fontSize:12, color:"#555", minWidth:100, textAlign:"right", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nome.split(" ")[0]}</div>
+                                <div style={{ flex:1, display:"flex", flexDirection:"column", gap:3 }}>
+                                    <div style={{ height:8, background:"#F0F0F0", borderRadius:4, overflow:"hidden" }}>
+                                        <div style={{ width:`${(dados.total/maxTotal)*100}%`, height:"100%", background:"#2E7D32", borderRadius:4 }} />
+                                    </div>
+                                    <div style={{ height:8, background:"#F0F0F0", borderRadius:4, overflow:"hidden" }}>
+                                        <div style={{ width:`${(dados.ultimos30/maxTotal)*100}%`, height:"100%", background:"#B41020", borderRadius:4 }} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <div style={{ display:"flex", gap:16, marginTop:8, justifyContent:"center" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#555" }}><div style={{ width:12, height:12, background:"#2E7D32", borderRadius:2 }} /> Total</div>
+                            <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#555" }}><div style={{ width:12, height:12, background:"#B41020", borderRadius:2 }} /> Últimos 30 dias</div>
+                        </div>
+                    </div>
+
+                    {/* Tabela */}
+                    <div style={{ border:"1px solid #EEE", borderRadius:8, overflow:"hidden" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 80px 80px 1fr", padding:"8px 12px", background:"#FAFAFA", borderBottom:"1px solid #EEE" }}>
+                            {["#","Corista","Total","Últ. 30 dias","Último acesso"].map(h=>(
+                                <div key={h} style={{ fontSize:11, fontWeight:700, color:cor }}>{h}</div>
+                            ))}
+                        </div>
+                        {lista.map(([nome, dados], i)=>(
+                            <div key={nome} style={{ display:"grid", gridTemplateColumns:"40px 1fr 80px 80px 1fr", padding:"10px 12px", borderBottom: i<lista.length-1?"1px solid #F5F5F5":"none", alignItems:"center" }}>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{i+1}</div>
+                                <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{nome}</div>
+                                <div><span style={{ display:"inline-block", padding:"2px 8px", borderRadius:20, background:"#E8F5E9", color:"#2E7D32", fontSize:12, fontWeight:700 }}>{dados.total}</span></div>
+                                <div><span style={{ display:"inline-block", padding:"2px 8px", borderRadius:20, background:"#FEE2E2", color:"#B41020", fontSize:12, fontWeight:700 }}>{dados.ultimos30}</span></div>
+                                <div style={{ fontSize:12, color:"#888" }}>
+                                    {dados.ultimoAcesso ? new Date(dados.ultimoAcesso*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—"}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ fontSize:12, color:"#AAA", marginTop:8 }}>↗ {lista.length} corista{lista.length!==1?"s":""} com acesso registrado</div>
+                </>
+            }
+        </div>
+    );
+}
+
 // ── RELATÓRIOS ────────────────────────────────────────────────────────────────
 function Relatorios({ config }) {
     const { data:events }  = useCollection("events","date");
@@ -2215,6 +2308,9 @@ ${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produç�
                 )}
             </div>
 
+            {/* Frequência de acesso */}
+            <FrequenciaAcesso config={config} />
+
             {/* Lista de atividades */}
             <div style={card}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
@@ -2242,6 +2338,318 @@ ${textos.equipe?`<div class="bloco"><div class="bloco-titulo">Equipe de Produç�
                     ))
                 }
             </div>
+        </div>
+    );
+}
+
+
+
+// ── FREQUÊNCIA VIA QR ─────────────────────────────────────────────────────────
+function CheckinPublico({ sessaoId, config }) {
+    const [sessao, setSessao]     = useState(null);
+    const [membro, setMembro]     = useState(null);
+    const [members, setMembers]   = useState([]);
+    const [busca, setBusca]       = useState("");
+    const [sugestoes, setSugestoes] = useState([]);
+    const [status, setStatus]     = useState(null); // null | 'ok' | 'erro' | 'expirado'
+    const [loading, setLoading]   = useState(true);
+    const cor = config.corPrimaria||COR;
+
+    useEffect(()=>{
+        // Carregar sessão
+        db.collection("sessoes_checkin").doc(sessaoId).get().then(doc=>{
+            if (!doc.exists) { setStatus("erro"); setLoading(false); return; }
+            const d = { id:doc.id, ...doc.data() };
+            // Verificar validade 24h
+            if (d.expiraEm && d.expiraEm.seconds < Date.now()/1000) {
+                setStatus("expirado"); setLoading(false); return;
+            }
+            setSessao(d);
+            setLoading(false);
+        });
+        // Carregar membros
+        db.collection("members").onSnapshot(snap=>{
+            setMembers(snap.docs.map(d=>({id:d.id,...d.data()})));
+        });
+    },[sessaoId]);
+
+    useEffect(()=>{
+        if (busca.length < 3) { setSugestoes([]); return; }
+        const t = busca.toLowerCase();
+        setSugestoes(members.filter(m=>m.active&&m.name.toLowerCase().includes(t)).slice(0,6));
+    },[busca,members]);
+
+    async function confirmarPresenca(m) {
+        // Verificar se já fez check-in
+        const snap = await db.collection("frequencias").where("sessaoId","==",sessaoId).where("membroId","==",m.id).get();
+        if (!snap.empty) { setMembro(m); setStatus("jaRegistrado"); return; }
+        await db.collection("frequencias").add({
+            sessaoId,
+            eventoId:  sessao.eventoId,
+            eventoTitulo: sessao.eventoTitulo,
+            eventoData: sessao.eventoData,
+            membroId:  m.id,
+            membroNome: m.name,
+            naipe: m.voice||"",
+            dataHora: firebase.firestore.FieldValue.serverTimestamp(),
+            data: todayStr()
+        });
+        setMembro(m);
+        setStatus("ok");
+    }
+
+    if (loading) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:config.corFundo||COR_FUNDO }}>
+        <div style={{ width:32, height:32, border:`3px solid ${cor}`, borderTopColor:"transparent", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+    </div>;
+
+    const wrap = { minHeight:"100vh", background:config.corFundo||COR_FUNDO, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 20px" };
+
+    if (status==="expirado") return <div style={wrap}>
+        <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>⏰</div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:"#1A1D23" }}>QR Code expirado</div>
+            <div style={{ fontSize:14, color:"#AAA", marginTop:8 }}>Este link de check-in não é mais válido.</div>
+        </div>
+    </div>;
+
+    if (status==="erro") return <div style={wrap}>
+        <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>❌</div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:"#1A1D23" }}>Sessão não encontrada</div>
+        </div>
+    </div>;
+
+    if (status==="ok") return <div style={wrap}>
+        <div style={{ textAlign:"center", background:"#fff", borderRadius:20, padding:"32px 24px", maxWidth:360, width:"100%", boxShadow:"0 4px 24px rgba(0,0,0,0.08)" }}>
+            <div style={{ width:72, height:72, background:"#E8F5E9", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                <Icon name="check" size={36} color="#2E7D32" />
+            </div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:"#1A1D23", marginBottom:8 }}>Presença confirmada!</div>
+            <div style={{ fontSize:15, color:"#2E7D32", fontWeight:600, marginBottom:4 }}>{membro?.name}</div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:16 }}>{sessao?.eventoTitulo} · {sessao?.eventoData}</div>
+            <div style={{ fontSize:12, color:"#CCC" }}>{config.nomeApp||"Coral Flamboyant"}</div>
+        </div>
+    </div>;
+
+    if (status==="jaRegistrado") return <div style={wrap}>
+        <div style={{ textAlign:"center", background:"#fff", borderRadius:20, padding:"32px 24px", maxWidth:360, width:"100%", boxShadow:"0 4px 24px rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>✅</div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:"#1A1D23" }}>Já registrado!</div>
+            <div style={{ fontSize:14, color:"#AAA", marginTop:8 }}>{membro?.name}, sua presença já foi confirmada neste evento.</div>
+        </div>
+    </div>;
+
+    return (
+        <div style={wrap}>
+            <div style={{ textAlign:"center", marginBottom:24 }}>
+                <div style={{ width:64, height:64, background:"#fff", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", boxShadow:"0 2px 12px rgba(0,0,0,0.1)" }}>
+                    <img src={config.logoUrl||LOGO_URL} alt="" style={{ width:44, height:44, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />
+                </div>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:20, fontWeight:700, color:cor }}>{config.nomeApp||"Coral Flamboyant"}</div>
+                <div style={{ fontSize:13, color:"#AAA", marginTop:4 }}>Check-in de presença</div>
+            </div>
+            <div style={{ background:"#fff", borderRadius:16, padding:"24px 20px", width:"100%", maxWidth:400, boxShadow:"0 4px 24px rgba(0,0,0,0.07)" }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, fontWeight:700, color:"#1A1D23", marginBottom:4 }}>{sessao?.eventoTitulo}</div>
+                <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>{sessao?.eventoData}</div>
+                <input value={busca} onChange={e=>{setBusca(e.target.value);}} autoFocus
+                    placeholder="Digite seu nome (mín. 3 letras)"
+                    style={{ width:"100%", padding:"12px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:14, outline:"none", fontFamily:"inherit", color:"#1A1D23", marginBottom:8 }} />
+                {sugestoes.length>0 && <div style={{ border:"1px solid #EEE", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
+                    {sugestoes.map(m=>(
+                        <button key={m.id} onClick={()=>confirmarPresenca(m)}
+                            style={{ display:"block", width:"100%", padding:"12px 14px", background:"none", border:"none", textAlign:"left", cursor:"pointer", fontSize:14, borderBottom:"1px solid #F5F5F5", fontFamily:"inherit", color:"#1A1D23" }}>
+                            {m.name} <span style={{ fontSize:12, color:"#AAA", marginLeft:8 }}>{m.voice}</span>
+                        </button>
+                    ))}
+                </div>}
+                {busca.length>0&&busca.length<3 && <div style={{ fontSize:12, color:"#AAA" }}>Digite mais {3-busca.length} letra(s)...</div>}
+                {busca.length>=3&&sugestoes.length===0 && <div style={{ fontSize:12, color:cor }}>Nenhum corista encontrado.</div>}
+            </div>
+        </div>
+    );
+}
+
+function Frequencia({ config }) {
+    const { data:events } = useCollection("events","date");
+    const [eventoSel, setEventoSel]   = useState("");
+    const [sessaoAtiva, setSessaoAtiva] = useState(null);
+    const [frequencias, setFrequencias] = useState([]);
+    const [qrUrl, setQrUrl]           = useState("");
+    const [gerando, setGerando]       = useState(false);
+    const [showQR, setShowQR]         = useState(false);
+    const cor = config.corPrimaria||COR;
+    const today = todayStr();
+
+    // Carregar sessão ativa do evento selecionado
+    useEffect(()=>{
+        if (!eventoSel) { setSessaoAtiva(null); setQrUrl(""); setShowQR(false); return; }
+        const unsub = db.collection("sessoes_checkin")
+            .where("eventoId","==",eventoSel)
+            .onSnapshot(snap=>{
+                const ativas = snap.docs.map(d=>({id:d.id,...d.data()}))
+                    .filter(s=>s.expiraEm?.seconds > Date.now()/1000);
+                setSessaoAtiva(ativas[0]||null);
+                if (ativas[0]) {
+                    const url = `${window.location.origin}${window.location.pathname}?checkin=${ativas[0].id}`;
+                    setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`);
+                    setShowQR(true);
+                }
+            });
+        return unsub;
+    },[eventoSel]);
+
+    // Carregar frequências do evento selecionado
+    useEffect(()=>{
+        if (!eventoSel) { setFrequencias([]); return; }
+        const unsub = db.collection("frequencias")
+            .where("eventoId","==",eventoSel)
+            .onSnapshot(snap=>setFrequencias(snap.docs.map(d=>({id:d.id,...d.data()}))));
+        return unsub;
+    },[eventoSel]);
+
+    async function gerarQR() {
+        if (!eventoSel) return;
+        const evento = events.find(e=>e.id===eventoSel);
+        if (!evento) return;
+        setGerando(true);
+        const expiraEm = new Date(Date.now() + 24*60*60*1000); // 24 horas
+        const ref = await db.collection("sessoes_checkin").add({
+            eventoId: eventoSel,
+            eventoTitulo: evento.title,
+            eventoData: evento.date,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            expiraEm: firebase.firestore.Timestamp.fromDate(expiraEm)
+        });
+        const url = `${window.location.origin}${window.location.pathname}?checkin=${ref.id}`;
+        setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`);
+        setShowQR(true);
+        setGerando(false);
+    }
+
+    async function encerrarSessao() {
+        if (!sessaoAtiva) return;
+        if (!window.confirm("Encerrar sessão de check-in?")) return;
+        await db.collection("sessoes_checkin").doc(sessaoAtiva.id).update({
+            expiraEm: firebase.firestore.Timestamp.fromDate(new Date(0))
+        });
+        setSessaoAtiva(null); setShowQR(false); setQrUrl("");
+    }
+
+    const proximos = events.filter(e=>e.date>=today).sort((a,b)=>a.date>b.date?1:-1);
+    const passados  = events.filter(e=>e.date<today).sort((a,b)=>a.date>b.date?-1:1).slice(0,20);
+    const eventoAtual = events.find(e=>e.id===eventoSel);
+    const totalMembros = frequencias.length;
+
+    const card = { background:"#fff", borderRadius:12, border:"1px solid #EEE8E8", padding:"20px", marginBottom:12, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+    const inp  = { padding:"10px 14px", border:"1px solid #E8E0E0", borderRadius:10, fontSize:13, outline:"none", fontFamily:"inherit", color:"#1A1D23", background:"#FAFAFA" };
+
+    return (
+        <div>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+                <Icon name="qr-code" size={24} color={cor} />
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:700, color:cor }}>Frequência via QR</div>
+            </div>
+            <div style={{ fontSize:13, color:"#AAA", marginBottom:20 }}>Controle de presença em ensaios e eventos</div>
+
+            {/* Seleção de evento + gerar QR */}
+            <div style={card}>
+                <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>Nova Sessão de Check-in</div>
+                <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"flex-end", marginBottom:16 }}>
+                    <div style={{ flex:1, minWidth:200 }}>
+                        <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#888", marginBottom:5, textTransform:"uppercase", letterSpacing:0.8 }}>Evento</label>
+                        <select style={{ ...inp, width:"100%" }} value={eventoSel} onChange={e=>setEventoSel(e.target.value)}>
+                            <option value="">Selecionar evento...</option>
+                            {proximos.length>0 && <optgroup label="PRÓXIMOS">
+                                {proximos.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                            </optgroup>}
+                            {passados.length>0 && <optgroup label="PASSADOS">
+                                {passados.map(e=><option key={e.id} value={e.id}>{e.date} — {e.title}</option>)}
+                            </optgroup>}
+                        </select>
+                    </div>
+                    {eventoSel && !sessaoAtiva && (
+                        <button onClick={gerarQR} disabled={gerando}
+                            style={{ display:"flex", alignItems:"center", gap:8, padding:"11px 20px", background:cor, color:"#fff", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:gerando?0.7:1 }}>
+                            <Icon name="qr-code" size={14} color="#fff" /> {gerando?"Gerando...":"Gerar QR Code"}
+                        </button>
+                    )}
+                    {sessaoAtiva && (
+                        <button onClick={encerrarSessao}
+                            style={{ padding:"11px 16px", background:"#FFF0F0", color:"#B41020", border:"1px solid #F5DADA", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                            Encerrar sessão
+                        </button>
+                    )}
+                </div>
+
+                {/* QR Code */}
+                {showQR && qrUrl && eventoAtual && (
+                    <div style={{ display:"flex", gap:20, alignItems:"flex-start", flexWrap:"wrap", padding:"16px", background:"#F9F5F5", borderRadius:10 }}>
+                        <div style={{ textAlign:"center" }}>
+                            <img src={qrUrl} alt="QR Code" style={{ width:160, height:160, borderRadius:8 }} />
+                            <div style={{ fontSize:11, color:"#AAA", marginTop:6 }}>
+                                {sessaoAtiva ? `Válido até ${new Date(sessaoAtiva.expiraEm.seconds*1000).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}` : "Válido por 24h"}
+                            </div>
+                        </div>
+                        <div style={{ flex:1 }}>
+                            <div style={{ fontSize:15, fontWeight:700, color:"#1A1D23", marginBottom:4 }}>{eventoAtual.title}</div>
+                            <div style={{ fontSize:13, color:"#AAA", marginBottom:12 }}>{eventoAtual.date}</div>
+                            <div style={{ fontSize:12, color:"#555", marginBottom:8 }}>📲 Coristas escaneiam o QR ou acessam o link:</div>
+                            <div style={{ display:"flex", gap:8 }}>
+                                <input readOnly value={sessaoAtiva ? `${window.location.origin}${window.location.pathname}?checkin=${sessaoAtiva.id}` : ""}
+                                    style={{ ...inp, flex:1, fontSize:11 }} />
+                                <button onClick={()=>navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?checkin=${sessaoAtiva?.id||""}`).then(()=>alert("Link copiado!"))}
+                                    style={{ padding:"8px 12px", background:cor, color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                    Copiar
+                                </button>
+                            </div>
+                            <div style={{ marginTop:12, display:"flex", alignItems:"center", gap:8 }}>
+                                <div style={{ width:8, height:8, borderRadius:"50%", background:"#2E7D32", animation:"pulse 1.5s infinite" }} />
+                                <span style={{ fontSize:13, color:"#2E7D32", fontWeight:600 }}>{totalMembros} presença{totalMembros!==1?"s":""} registrada{totalMembros!==1?"s":""}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {eventoSel && !showQR && (
+                    <div style={{ textAlign:"center", padding:"32px 20px", color:"#CCC" }}>
+                        <Icon name="qr-code" size={48} color="#EEE" />
+                        <div style={{ marginTop:12, fontSize:14 }}>Clique em "Gerar QR Code" para iniciar o check-in</div>
+                    </div>
+                )}
+                {!eventoSel && (
+                    <div style={{ textAlign:"center", padding:"32px 20px", color:"#CCC" }}>
+                        <Icon name="qr-code" size={48} color="#EEE" />
+                        <div style={{ marginTop:12, fontSize:15, fontWeight:600 }}>Selecione um evento acima</div>
+                        <div style={{ fontSize:13, marginTop:4 }}>Para gerenciar sessões QR de check-in de presença</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Lista de presenças */}
+            {eventoSel && frequencias.length>0 && (
+                <div style={card}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1A1D23", marginBottom:14 }}>
+                        Presenças registradas <span style={{ fontSize:13, color:"#AAA", fontWeight:400 }}>({frequencias.length})</span>
+                    </div>
+                    <div style={{ border:"1px solid #EEE", borderRadius:8, overflow:"hidden" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"8px 12px", background:"#FAFAFA", borderBottom:"1px solid #EEE" }}>
+                            {["#","Nome","Naipe","Horário"].map(h=>(
+                                <div key={h} style={{ fontSize:11, fontWeight:700, color:cor }}>{h}</div>
+                            ))}
+                        </div>
+                        {frequencias.sort((a,b)=>( a.dataHora?.seconds||0)-(b.dataHora?.seconds||0)).map((f,i)=>(
+                            <div key={f.id} style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 1fr", padding:"10px 12px", borderBottom:i<frequencias.length-1?"1px solid #F5F5F5":"none", alignItems:"center" }}>
+                                <div style={{ fontSize:12, color:"#AAA" }}>{i+1}</div>
+                                <div style={{ fontSize:13, fontWeight:600, color:"#1A1D23" }}>{f.membroNome}</div>
+                                <div style={{ fontSize:12, color:"#888" }}>{f.naipe||"—"}</div>
+                                <div style={{ fontSize:12, color:"#AAA" }}>
+                                    {f.dataHora?.seconds ? new Date(f.dataHora.seconds*1000).toLocaleString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "—"}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -2289,14 +2697,29 @@ function App() {
         return unsub;
     },[]);
 
-    function handleLogin(u)  { localStorage.setItem("cf_user",JSON.stringify(u)); setUser(u); setTab(u.isAdmin?"painel":"agenda"); }
+    function handleLogin(u) {
+        localStorage.setItem("cf_user", JSON.stringify(u));
+        setUser(u);
+        setTab(u.isAdmin ? "painel" : "agenda");
+        // Registrar acesso do corista
+        if (u.role === "corista" && u.name) {
+            const agora = new Date();
+            db.collection("acessos").add({
+                nome: u.name,
+                dataHora: firebase.firestore.FieldValue.serverTimestamp(),
+                data: agora.toISOString().split("T")[0]
+            });
+        }
+    }
     function handleLogout()  { localStorage.removeItem("cf_user"); setUser(null); }
 
     const params = new URLSearchParams(window.location.search);
     const isCadastro = params.get("cadastro") === "1";
     const mesaId     = params.get("mesa");
+    const checkinId  = params.get("checkin");
     if (isCadastro) return <CadastroPublico config={config} />;
     if (mesaId)     return <MesaSom eventoId={mesaId} config={config} />;
+    if (checkinId)  return <CheckinPublico sessaoId={checkinId} config={config} />;
     if (!user) return <Login members={members} onLogin={handleLogin} config={config} />;
 
     const isAdmin  = user.isAdmin;
@@ -2311,7 +2734,7 @@ function App() {
         estudos:      <SalaEstudos config={config} isAdmin={isAdmin} />,
         agenda:       <Agenda config={config} isAdmin={isAdmin} />,
         avisos:       <Avisos config={config} isAdmin={isAdmin} />,
-        frequencia:   <EmBreve label="Frequência"         icon="bar-chart-2" />,
+        frequencia:   <Frequencia config={config} />,
         apresentacao: <Apresentacao config={config} />,
         declaracao:   <EmBreve label="Declaração Digital" icon="file-text" />,
         relatorios:   <Relatorios config={config} />,
