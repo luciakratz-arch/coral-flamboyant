@@ -10900,7 +10900,7 @@ function AreaRH(_ref48) {
     return a.eventoData > b.eventoData ? 1 : -1;
   });
   function gerarDeclCorista() {
-    if (!coristaAtual || freqCorista.length === 0) return;
+    if (!coristaAtual) return;
     var nomeApp = config.nomeApp || "Flamboyant Coral",
       logoUrl = config.logoUrl || LOGO_URL;
     var maestro = textos.maestro || "Maestro",
