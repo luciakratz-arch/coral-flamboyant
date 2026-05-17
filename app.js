@@ -1,4 +1,6 @@
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _regeneratorValues(e) { if (null != e) { var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"], r = 0; if (t) return t.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) return { next: function next() { return e && r >= e.length && (e = void 0), { value: e && e[r++], done: !e }; } }; } throw new TypeError(_typeof(e) + " is not iterable"); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t.return || t.return(); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -127,11 +129,7 @@ var Icon = function Icon(_ref) {
     size = _ref$size === void 0 ? 16 : _ref$size,
     color = _ref.color;
   useEffect(function () {
-    if (window.lucide) {
-      try {
-        window.lucide.createIcons();
-      } catch (e) {}
-    }
+    if (window.lucide) window.lucide.createIcons();
   }, [name]);
   return /*#__PURE__*/React.createElement("i", {
     "data-lucide": name,
@@ -6279,16 +6277,155 @@ function Apresentacao(_ref21) {
     _useState114 = _slicedToArray(_useState113, 2),
     tocando = _useState114[0],
     setTocando = _useState114[1];
-  var _useState115 = useState(null),
+  var _useState115 = useState({}),
     _useState116 = _slicedToArray(_useState115, 2),
-    dragIdx = _useState116[0],
-    setDragIdx = _useState116[1];
+    planos = _useState116[0],
+    setPlanos = _useState116[1];
+  var _useState117 = useState({}),
+    _useState118 = _slicedToArray(_useState117, 2),
+    offline = _useState118[0],
+    setOffline = _useState118[1]; // { [musicaId]: blob URL }
+  var _useState119 = useState(false),
+    _useState120 = _slicedToArray(_useState119, 2),
+    preparando = _useState120[0],
+    setPreparando = _useState120[1];
+  var _useState121 = useState({}),
+    _useState122 = _slicedToArray(_useState121, 2),
+    progresso = _useState122[0],
+    setProgresso = _useState122[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
   useEffect(function () {
     if (eventoSel) setSetlist(eventoSel.setlist || []);else setSetlist([]);
     setTocando(null);
+    setPlanos({});
+    setOffline({});
+    setProgresso({});
   }, [eventoSel === null || eventoSel === void 0 ? void 0 : eventoSel.id]);
+  function togglePlano(id) {
+    setPlanos(function (p) {
+      return _objectSpread(_objectSpread({}, p), {}, _defineProperty({}, id, p[id] === "B" ? "A" : "B"));
+    });
+  }
+  function getUrl(s) {
+    var plano = planos[s.id] || "A";
+    var url = plano === "B" ? s.playbackB || s.playback || s.audioOriginal : s.playback || s.audioOriginal;
+    if (!url) return null;
+    var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (dr) return "https://drive.google.com/file/d/" + dr[1] + "/preview";
+    var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+    if (yt) return "https://www.youtube.com/embed/" + yt[1] + "?autoplay=1";
+    return url;
+  }
+  function getUrlDownload(s, plano) {
+    var p = plano || "A";
+    var url = p === "B" ? s.playbackB || s.playback || s.audioOriginal : s.playback || s.audioOriginal;
+    if (!url) return null;
+    // Só funciona para Drive e URLs diretas — YouTube não pode ser baixado
+    var yt = url.match(/(?:youtube\.com|youtu\.be)/);
+    if (yt) return null;
+    var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (dr) return "https://drive.google.com/uc?export=download&id=" + dr[1];
+    return url;
+  }
+  function prepararOffline() {
+    return _prepararOffline.apply(this, arguments);
+  }
+  function _prepararOffline() {
+    _prepararOffline = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee15() {
+      var _iterator, _step, _loop, _ret, _t;
+      return _regenerator().w(function (_context16) {
+        while (1) switch (_context16.p = _context16.n) {
+          case 0:
+            setPreparando(true);
+            _iterator = _createForOfIteratorHelper(setlist);
+            _context16.p = 1;
+            _loop = /*#__PURE__*/_regenerator().m(function _loop() {
+              var s, plano, key, url, yt, dr, urlAbrir;
+              return _regenerator().w(function (_context15) {
+                while (1) switch (_context15.n) {
+                  case 0:
+                    s = _step.value;
+                    plano = planos[s.id] || "A";
+                    key = s.id + "-" + plano;
+                    url = plano === "B" ? s.playbackB || s.playback || s.audioOriginal : s.playback || s.audioOriginal;
+                    if (url) {
+                      _context15.n = 1;
+                      break;
+                    }
+                    setProgresso(function (p) {
+                      return _objectSpread(_objectSpread({}, p), {}, _defineProperty({}, key, "sem-link"));
+                    });
+                    return _context15.a(2, 0);
+                  case 1:
+                    yt = url.match(/(?:youtube\.com|youtu\.be)/);
+                    if (!yt) {
+                      _context15.n = 2;
+                      break;
+                    }
+                    setProgresso(function (p) {
+                      return _objectSpread(_objectSpread({}, p), {}, _defineProperty({}, key, "youtube"));
+                    });
+                    return _context15.a(2, 0);
+                  case 2:
+                    dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    urlAbrir = dr ? "https://drive.google.com/file/d/" + dr[1] + "/view" : url;
+                    window.open(urlAbrir, "_blank");
+                    setProgresso(function (p) {
+                      return _objectSpread(_objectSpread({}, p), {}, _defineProperty({}, key, "aberto"));
+                    });
+                    _context15.n = 3;
+                    return new Promise(function (r) {
+                      return setTimeout(r, 800);
+                    });
+                  case 3:
+                    return _context15.a(2);
+                }
+              }, _loop);
+            });
+            _iterator.s();
+          case 2:
+            if ((_step = _iterator.n()).done) {
+              _context16.n = 5;
+              break;
+            }
+            return _context16.d(_regeneratorValues(_loop()), 3);
+          case 3:
+            _ret = _context16.v;
+            if (!(_ret === 0)) {
+              _context16.n = 4;
+              break;
+            }
+            return _context16.a(3, 4);
+          case 4:
+            _context16.n = 2;
+            break;
+          case 5:
+            _context16.n = 7;
+            break;
+          case 6:
+            _context16.p = 6;
+            _t = _context16.v;
+            _iterator.e(_t);
+          case 7:
+            _context16.p = 7;
+            _iterator.f();
+            return _context16.f(7);
+          case 8:
+            setPreparando(false);
+          case 9:
+            return _context16.a(2);
+        }
+      }, _callee15, null, [[1, 6, 7, 8]]);
+    }));
+    return _prepararOffline.apply(this, arguments);
+  }
+  function getUrlFinal(s) {
+    var plano = planos[s.id] || "A";
+    var key = s.id + "-" + plano;
+    if (offline[key]) return offline[key]; // usa versão offline
+    return getUrl(s); // usa online
+  }
   var proximos = events.filter(function (e) {
     var _e$setlist;
     return e.date >= today && ((_e$setlist = e.setlist) === null || _e$setlist === void 0 ? void 0 : _e$setlist.length) > 0;
@@ -6305,46 +6442,46 @@ function Apresentacao(_ref21) {
     return _salvarOrdem.apply(this, arguments);
   }
   function _salvarOrdem() {
-    _salvarOrdem = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee15(nova) {
-      return _regenerator().w(function (_context15) {
-        while (1) switch (_context15.n) {
+    _salvarOrdem = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee16(nova) {
+      return _regenerator().w(function (_context17) {
+        while (1) switch (_context17.n) {
           case 0:
             if (eventoSel) {
-              _context15.n = 1;
+              _context17.n = 1;
               break;
             }
-            return _context15.a(2);
+            return _context17.a(2);
           case 1:
             setSetlist(nova);
-            _context15.n = 2;
+            _context17.n = 2;
             return db.collection("events").doc(eventoSel.id).update({
               setlist: nova,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           case 2:
-            return _context15.a(2);
+            return _context17.a(2);
         }
-      }, _callee15);
+      }, _callee16);
     }));
     return _salvarOrdem.apply(this, arguments);
   }
   function moverCima(idx) {
     if (idx === 0) return;
-    var nova = _toConsumableArray(setlist);
-    var _ref22 = [nova[idx], nova[idx - 1]];
-    nova[idx - 1] = _ref22[0];
-    nova[idx] = _ref22[1];
-    salvarOrdem(nova);
+    var n = _toConsumableArray(setlist);
+    var _ref22 = [n[idx], n[idx - 1]];
+    n[idx - 1] = _ref22[0];
+    n[idx] = _ref22[1];
+    salvarOrdem(n);
   }
   function moverBaixo(idx) {
     if (idx === setlist.length - 1) return;
-    var nova = _toConsumableArray(setlist);
-    var _ref23 = [nova[idx + 1], nova[idx]];
-    nova[idx] = _ref23[0];
-    nova[idx + 1] = _ref23[1];
-    salvarOrdem(nova);
+    var n = _toConsumableArray(setlist);
+    var _ref23 = [n[idx + 1], n[idx]];
+    n[idx] = _ref23[0];
+    n[idx + 1] = _ref23[1];
+    salvarOrdem(n);
   }
-  var mesaUrl = eventoSel ? "".concat(window.location.origin).concat(window.location.pathname, "?mesa=").concat(eventoSel.id) : "";
+  var mesaUrl = eventoSel ? window.location.origin + window.location.pathname + "?mesa=" + eventoSel.id : "";
   var card = {
     background: "#fff",
     borderRadius: 12,
@@ -6363,6 +6500,10 @@ function Apresentacao(_ref21) {
     color: "#1A1D23",
     background: "#FAFAFA"
   };
+  var totalOffline = Object.values(progresso).filter(function (v) {
+    return v === "ok";
+  }).length;
+  var totalMusicas = setlist.length;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 6
@@ -6391,17 +6532,9 @@ function Apresentacao(_ref21) {
       color: "#1A1D23",
       marginBottom: 12
     }
-  }, "Selecionar Evento"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 10,
-      alignItems: "center",
-      flexWrap: "wrap"
-    }
-  }, /*#__PURE__*/React.createElement("select", {
+  }, "Selecionar Evento"), /*#__PURE__*/React.createElement("select", {
     style: _objectSpread(_objectSpread({}, inp), {}, {
-      flex: 1,
-      minWidth: 200
+      width: "100%"
     }),
     value: (eventoSel === null || eventoSel === void 0 ? void 0 : eventoSel.id) || "",
     onChange: function onChange(e) {
@@ -6426,13 +6559,13 @@ function Apresentacao(_ref21) {
       key: e.id,
       value: e.id
     }, e.date, " \u2014 ", e.title);
-  })))), eventoSel && setlist.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }))), eventoSel && setlist.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#E65100",
       marginTop: 8
     }
-  }, "Este evento n\xE3o tem m\xFAsicas no repert\xF3rio. Adicione pelo m\xF3dulo Agenda \u2192 editar evento.")), eventoSel && mesaUrl && /*#__PURE__*/React.createElement("div", {
+  }, "Este evento n\xE3o tem m\xFAsicas. Adicione pelo m\xF3dulo Agenda.")), eventoSel && mesaUrl && /*#__PURE__*/React.createElement("div", {
     style: {
       background: "#1A1D23",
       borderRadius: 12,
@@ -6441,28 +6574,18 @@ function Apresentacao(_ref21) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "monitor-speaker",
-    size: 16,
-    color: "#AAA"
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
       fontSize: 14,
       fontWeight: 700,
-      color: "#fff"
+      color: "#fff",
+      marginBottom: 6
     }
-  }, "Mesa de Som \u2014 Painel do Sonoplasta")), /*#__PURE__*/React.createElement("div", {
+  }, "Mesa de Som \u2014 Painel do Sonoplasta"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#888",
       marginBottom: 10
     }
-  }, "Acesso p\xFAblico sem senha \u2014 envie este link para o sonoplasta no dia da apresenta\xE7\xE3o."), /*#__PURE__*/React.createElement("div", {
+  }, "Envie este link para o sonoplasta no dia da apresenta\xE7\xE3o."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -6509,6 +6632,71 @@ function Apresentacao(_ref21) {
       textDecoration: "none"
     }
   }, "Abrir"))), eventoSel && setlist.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: _objectSpread(_objectSpread({}, card), {}, {
+      background: totalOffline === totalMusicas && totalMusicas > 0 ? "#E8F5E9" : "#FFF8E1",
+      border: "1px solid ".concat(totalOffline === totalMusicas && totalMusicas > 0 ? "#A5D6A7" : "#FFE082")
+    })
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#1A1D23"
+    }
+  }, "\uD83D\uDCE5 Salvar \xE1udios para uso offline"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#888",
+      marginTop: 2
+    }
+  }, "Abre cada arquivo do Drive para voc\xEA salvar no dispositivo antes do show."), Object.keys(progresso).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 8
+    }
+  }, setlist.map(function (s) {
+    var plano = planos[s.id] || "A";
+    var key = s.id + "-" + plano;
+    var st = progresso[key];
+    return /*#__PURE__*/React.createElement("span", {
+      key: key,
+      style: {
+        fontSize: 11,
+        padding: "2px 8px",
+        borderRadius: 12,
+        fontWeight: 700,
+        background: st === "aberto" ? "#E8F5E9" : st === "youtube" ? "#F3E5F5" : st === "sem-link" ? "#FFF3E0" : "#F5F5F5",
+        color: st === "aberto" ? "#2E7D32" : st === "youtube" ? "#6A1B9A" : st === "sem-link" ? "#E65100" : "#888"
+      }
+    }, s.title, ": ", st === "aberto" ? "✓ aberto para salvar" : st === "youtube" ? "▶ YouTube (salve manualmente)" : st === "sem-link" ? "⚠ sem link" : "—");
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: prepararOffline,
+    disabled: preparando,
+    style: {
+      padding: "10px 20px",
+      background: preparando ? "#CCC" : cor,
+      color: "#fff",
+      border: "none",
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: preparando ? "not-allowed" : "pointer",
+      fontFamily: "inherit",
+      whiteSpace: "nowrap"
+    }
+  }, preparando ? "⏳ Abrindo..." : "📂 Abrir áudios"))), eventoSel && setlist.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -6523,17 +6711,13 @@ function Apresentacao(_ref21) {
       gap: 8,
       marginBottom: 12
     }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "music",
-    size: 16,
-    color: cor
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
       color: cor
     }
-  }, "Setlist"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDFB5 Setlist"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#AAA"
@@ -6544,11 +6728,14 @@ function Apresentacao(_ref21) {
       color: "#CCC",
       marginLeft: "auto"
     }
-  }, "\u2191\u2193 para reordenar")), setlist.map(function (s, i) {
+  }, "\u2191\u2193 reordenar")), setlist.map(function (s, i) {
+    var plano = planos[s.id] || "A";
+    var key = s.id + "-" + plano;
+    var isOffline = !!offline[key];
     return /*#__PURE__*/React.createElement("div", {
-      key: i,
+      key: s.id || i,
       onClick: function onClick() {
-        return setTocando(s);
+        return setTocando(_objectSpread({}, s));
       },
       style: {
         display: "flex",
@@ -6559,8 +6746,7 @@ function Apresentacao(_ref21) {
         marginBottom: 6,
         cursor: "pointer",
         background: (tocando === null || tocando === void 0 ? void 0 : tocando.id) === s.id ? cor + "15" : "#F9F5F5",
-        border: (tocando === null || tocando === void 0 ? void 0 : tocando.id) === s.id ? "1px solid ".concat(cor, "33") : "1px solid transparent",
-        transition: "background 0.15s"
+        border: (tocando === null || tocando === void 0 ? void 0 : tocando.id) === s.id ? "1px solid " + cor + "33" : "1px solid transparent"
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -6580,12 +6766,30 @@ function Apresentacao(_ref21) {
         fontWeight: 600,
         color: "#1A1D23"
       }
-    }, s.title), s.compositor && /*#__PURE__*/React.createElement("div", {
+    }, s.title), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
-        color: "#AAA"
+        fontSize: 10,
+        color: isOffline ? "#2E7D32" : "#CCC",
+        fontWeight: 600
       }
-    }, s.compositor)), /*#__PURE__*/React.createElement("div", {
+    }, isOffline ? "📥 offline" : "🌐 online")), /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick(e) {
+        e.stopPropagation();
+        togglePlano(s.id);
+      },
+      style: {
+        padding: "3px 8px",
+        borderRadius: 6,
+        border: "1.5px solid " + (planos[s.id] === "B" ? "#E65100" : cor),
+        background: planos[s.id] === "B" ? "#E65100" : cor,
+        color: "#fff",
+        fontSize: 11,
+        fontWeight: 700,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        minWidth: 32
+      }
+    }, planos[s.id] === "B" ? "B" : "A"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         flexDirection: "column",
@@ -6601,13 +6805,10 @@ function Apresentacao(_ref21) {
         border: "none",
         cursor: "pointer",
         padding: 2,
-        color: i === 0 ? "#EEE" : "#888"
+        fontSize: 12,
+        color: i === 0 ? "#DDD" : "#888"
       }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "chevron-up",
-      size: 14,
-      color: i === 0 ? "#EEE" : "#888"
-    })), /*#__PURE__*/React.createElement("button", {
+    }, "\u25B2"), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick(e) {
         e.stopPropagation();
         moverBaixo(i);
@@ -6617,90 +6818,84 @@ function Apresentacao(_ref21) {
         border: "none",
         cursor: "pointer",
         padding: 2,
-        color: i === setlist.length - 1 ? "#EEE" : "#888"
+        fontSize: 12,
+        color: i === setlist.length - 1 ? "#DDD" : "#888"
       }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "chevron-down",
-      size: 14,
-      color: i === setlist.length - 1 ? "#EEE" : "#888"
-    }))));
+    }, "\u25BC")));
   })), /*#__PURE__*/React.createElement("div", {
     style: card
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "volume-2",
-    size: 16,
-    color: cor
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
       fontSize: 14,
       fontWeight: 700,
-      color: cor
+      color: cor,
+      marginBottom: 12
     }
-  }, "Player")), !tocando ? /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD0A Player"), !tocando ? /*#__PURE__*/React.createElement("div", {
     style: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
+      textAlign: "center",
       padding: "40px 20px",
-      color: "#CCC",
-      gap: 12
+      color: "#CCC"
     }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "music",
-    size: 40,
-    color: "#EEE"
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      marginBottom: 8
+    }
+  }, "\uD83C\uDFB5"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13
     }
   }, "Clique em uma m\xFAsica para reproduzir")) : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 14,
       fontWeight: 700,
       color: "#1A1D23",
-      marginBottom: 4
+      flex: 1
     }
-  }, tocando.title), tocando.compositor && /*#__PURE__*/React.createElement("div", {
+  }, tocando.title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      padding: "3px 10px",
+      borderRadius: 6,
+      background: planos[tocando.id] === "B" ? "#E65100" : cor,
+      color: "#fff",
+      fontSize: 11,
+      fontWeight: 700
+    }
+  }, "Plano ", planos[tocando.id] || "A")), tocando.compositor && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#AAA",
-      marginBottom: 12
+      marginBottom: 8
     }
-  }, tocando.compositor), tocando.playback || tocando.audioOriginal ? /*#__PURE__*/React.createElement("iframe", {
-    src: function () {
-      var url = tocando.playback || tocando.audioOriginal;
-      var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-      if (yt) return "https://www.youtube.com/embed/".concat(yt[1], "?autoplay=1");
-      var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (dr) return "https://drive.google.com/file/d/".concat(dr[1], "/preview");
-      return url;
-    }(),
+  }, tocando.compositor), getUrlFinal(tocando) ? /*#__PURE__*/React.createElement("iframe", {
+    key: tocando.id + "-" + (planos[tocando.id] || "A") + "-" + (offline[tocando.id + "-" + (planos[tocando.id] || "A")] ? "off" : "on"),
+    src: getUrlFinal(tocando),
     style: {
       width: "100%",
-      height: 200,
+      height: 80,
       border: "none",
       borderRadius: 8
     },
-    allow: "autoplay; fullscreen",
+    allow: "autoplay",
     title: tocando.title
   }) : /*#__PURE__*/React.createElement("div", {
     style: {
-      padding: "20px",
+      padding: 20,
       background: "#F5F5F5",
       borderRadius: 8,
       textAlign: "center",
       color: "#AAA",
       fontSize: 13
     }
-  }, "Esta m\xFAsica n\xE3o tem playback cadastrado."), setlist[setlist.findIndex(function (s) {
+  }, "Sem playback Plano ", planos[tocando.id] || "A", " cadastrado."), setlist[setlist.findIndex(function (s) {
     return s.id === tocando.id;
   }) + 1] && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6712,21 +6907,13 @@ function Apresentacao(_ref21) {
       alignItems: "center",
       gap: 8
     }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "skip-forward",
-    size: 13,
-    color: "#AAA"
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
-      color: "#AAA"
+      color: "#AAA",
+      flex: 1
     }
-  }, "A seguir: ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "#1A1D23",
-      fontWeight: 600
-    }
-  }, setlist[setlist.findIndex(function (s) {
+  }, "A seguir: ", /*#__PURE__*/React.createElement("strong", null, setlist[setlist.findIndex(function (s) {
     return s.id === tocando.id;
   }) + 1].title)), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
@@ -6735,7 +6922,6 @@ function Apresentacao(_ref21) {
       }) + 1]);
     },
     style: {
-      marginLeft: "auto",
       padding: "4px 10px",
       background: cor,
       color: "#fff",
@@ -6752,23 +6938,22 @@ function Apresentacao(_ref21) {
       padding: "48px 20px",
       color: "#CCC"
     })
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "qr-code",
-    size: 48,
-    color: "#EEE"
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      marginTop: 12,
+      fontSize: 48,
+      marginBottom: 12
+    }
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 15,
-      fontWeight: 600,
-      color: "#CCC"
+      fontWeight: 600
     }
   }, "Selecione um evento acima"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       marginTop: 4
     }
-  }, "Para gerenciar o setlist e playbacks da apresenta\xE7\xE3o")));
+  }, "Para gerenciar o setlist e playbacks")));
 }
 
 // ── FREQUÊNCIA POR EVENTOS (usado no Relatório) ───────────────────────────────
@@ -6875,10 +7060,10 @@ function FrequenciaEventos(_ref24) {
 // ── FREQUÊNCIA DE ACESSO ──────────────────────────────────────────────────────
 function FrequenciaAcesso(_ref25) {
   var config = _ref25.config;
-  var _useState117 = useState([]),
-    _useState118 = _slicedToArray(_useState117, 2),
-    acessos = _useState118[0],
-    setAcessos = _useState118[1];
+  var _useState123 = useState([]),
+    _useState124 = _slicedToArray(_useState123, 2),
+    acessos = _useState124[0],
+    setAcessos = _useState124[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("acessos").onSnapshot(function (snap) {
@@ -7158,34 +7343,34 @@ function Relatorios(_ref32) {
   var _useCollection14 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection14.data;
   var cor = config.corPrimaria || COR;
-  var _useState119 = useState(new Date().getFullYear() + "-01-01"),
-    _useState120 = _slicedToArray(_useState119, 2),
-    dataInicio = _useState120[0],
-    setDataInicio = _useState120[1];
-  var _useState121 = useState(todayStr()),
-    _useState122 = _slicedToArray(_useState121, 2),
-    dataFim = _useState122[0],
-    setDataFim = _useState122[1];
-  var _useState123 = useState("todos"),
-    _useState124 = _slicedToArray(_useState123, 2),
-    eventoFiltro = _useState124[0],
-    setEventoFiltro = _useState124[1];
-  var _useState125 = useState({}),
+  var _useState125 = useState(new Date().getFullYear() + "-01-01"),
     _useState126 = _slicedToArray(_useState125, 2),
-    textos = _useState126[0],
-    setTextos = _useState126[1];
-  var _useState127 = useState(false),
+    dataInicio = _useState126[0],
+    setDataInicio = _useState126[1];
+  var _useState127 = useState(todayStr()),
     _useState128 = _slicedToArray(_useState127, 2),
-    editTextos = _useState128[0],
-    setEditTextos = _useState128[1];
-  var _useState129 = useState({}),
+    dataFim = _useState128[0],
+    setDataFim = _useState128[1];
+  var _useState129 = useState("todos"),
     _useState130 = _slicedToArray(_useState129, 2),
-    formTextos = _useState130[0],
-    setFormTextos = _useState130[1];
-  var _useState131 = useState(false),
+    eventoFiltro = _useState130[0],
+    setEventoFiltro = _useState130[1];
+  var _useState131 = useState({}),
     _useState132 = _slicedToArray(_useState131, 2),
-    salvandoTextos = _useState132[0],
-    setSalvandoTextos = _useState132[1];
+    textos = _useState132[0],
+    setTextos = _useState132[1];
+  var _useState133 = useState(false),
+    _useState134 = _slicedToArray(_useState133, 2),
+    editTextos = _useState134[0],
+    setEditTextos = _useState134[1];
+  var _useState135 = useState({}),
+    _useState136 = _slicedToArray(_useState135, 2),
+    formTextos = _useState136[0],
+    setFormTextos = _useState136[1];
+  var _useState137 = useState(false),
+    _useState138 = _slicedToArray(_useState137, 2),
+    salvandoTextos = _useState138[0],
+    setSalvandoTextos = _useState138[1];
 
   // Carregar textos qualitativos do Firebase
   useEffect(function () {
@@ -7200,12 +7385,12 @@ function Relatorios(_ref32) {
     return _salvarTextos.apply(this, arguments);
   } // Filtrar eventos por período
   function _salvarTextos() {
-    _salvarTextos = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee16() {
-      return _regenerator().w(function (_context16) {
-        while (1) switch (_context16.n) {
+    _salvarTextos = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17() {
+      return _regenerator().w(function (_context18) {
+        while (1) switch (_context18.n) {
           case 0:
             setSalvandoTextos(true);
-            _context16.n = 1;
+            _context18.n = 1;
             return db.collection("config").doc("relatorio").set(formTextos, {
               merge: true
             });
@@ -7214,9 +7399,9 @@ function Relatorios(_ref32) {
             setSalvandoTextos(false);
             setEditTextos(false);
           case 2:
-            return _context16.a(2);
+            return _context18.a(2);
         }
-      }, _callee16);
+      }, _callee17);
     }));
     return _salvarTextos.apply(this, arguments);
   }
@@ -8151,34 +8336,34 @@ function Relatorios(_ref32) {
 function CheckinPublico(_ref41) {
   var sessaoId = _ref41.sessaoId,
     config = _ref41.config;
-  var _useState133 = useState(null),
-    _useState134 = _slicedToArray(_useState133, 2),
-    sessao = _useState134[0],
-    setSessao = _useState134[1];
-  var _useState135 = useState(null),
-    _useState136 = _slicedToArray(_useState135, 2),
-    membro = _useState136[0],
-    setMembro = _useState136[1];
-  var _useState137 = useState([]),
-    _useState138 = _slicedToArray(_useState137, 2),
-    members = _useState138[0],
-    setMembers = _useState138[1];
-  var _useState139 = useState(""),
+  var _useState139 = useState(null),
     _useState140 = _slicedToArray(_useState139, 2),
-    busca = _useState140[0],
-    setBusca = _useState140[1];
-  var _useState141 = useState([]),
+    sessao = _useState140[0],
+    setSessao = _useState140[1];
+  var _useState141 = useState(null),
     _useState142 = _slicedToArray(_useState141, 2),
-    sugestoes = _useState142[0],
-    setSugestoes = _useState142[1];
-  var _useState143 = useState(null),
+    membro = _useState142[0],
+    setMembro = _useState142[1];
+  var _useState143 = useState([]),
     _useState144 = _slicedToArray(_useState143, 2),
-    status = _useState144[0],
-    setStatus = _useState144[1]; // null | 'ok' | 'erro' | 'expirado'
-  var _useState145 = useState(true),
+    members = _useState144[0],
+    setMembers = _useState144[1];
+  var _useState145 = useState(""),
     _useState146 = _slicedToArray(_useState145, 2),
-    loading = _useState146[0],
-    setLoading = _useState146[1];
+    busca = _useState146[0],
+    setBusca = _useState146[1];
+  var _useState147 = useState([]),
+    _useState148 = _slicedToArray(_useState147, 2),
+    sugestoes = _useState148[0],
+    setSugestoes = _useState148[1];
+  var _useState149 = useState(null),
+    _useState150 = _slicedToArray(_useState149, 2),
+    status = _useState150[0],
+    setStatus = _useState150[1]; // null | 'ok' | 'erro' | 'expirado'
+  var _useState151 = useState(true),
+    _useState152 = _slicedToArray(_useState151, 2),
+    loading = _useState152[0],
+    setLoading = _useState152[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     // Carregar sessão
@@ -8223,24 +8408,24 @@ function CheckinPublico(_ref41) {
     return _confirmarPresenca.apply(this, arguments);
   }
   function _confirmarPresenca() {
-    _confirmarPresenca = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17(m) {
+    _confirmarPresenca = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18(m) {
       var snap;
-      return _regenerator().w(function (_context17) {
-        while (1) switch (_context17.n) {
+      return _regenerator().w(function (_context19) {
+        while (1) switch (_context19.n) {
           case 0:
-            _context17.n = 1;
+            _context19.n = 1;
             return db.collection("frequencias").where("sessaoId", "==", sessaoId).where("membroId", "==", m.id).get();
           case 1:
-            snap = _context17.v;
+            snap = _context19.v;
             if (snap.empty) {
-              _context17.n = 2;
+              _context19.n = 2;
               break;
             }
             setMembro(m);
             setStatus("jaRegistrado");
-            return _context17.a(2);
+            return _context19.a(2);
           case 2:
-            _context17.n = 3;
+            _context19.n = 3;
             return db.collection("frequencias").add({
               sessaoId: sessaoId,
               eventoId: sessao.eventoId,
@@ -8256,9 +8441,9 @@ function CheckinPublico(_ref41) {
             setMembro(m);
             setStatus("ok");
           case 4:
-            return _context17.a(2);
+            return _context19.a(2);
         }
-      }, _callee17);
+      }, _callee18);
     }));
     return _confirmarPresenca.apply(this, arguments);
   }
@@ -8551,30 +8736,30 @@ function Frequencia(_ref42) {
   var config = _ref42.config;
   var _useCollection15 = useCollection("events", "date"),
     events = _useCollection15.data;
-  var _useState147 = useState(""),
-    _useState148 = _slicedToArray(_useState147, 2),
-    eventoSel = _useState148[0],
-    setEventoSel = _useState148[1];
-  var _useState149 = useState(null),
-    _useState150 = _slicedToArray(_useState149, 2),
-    sessaoAtiva = _useState150[0],
-    setSessaoAtiva = _useState150[1];
-  var _useState151 = useState([]),
-    _useState152 = _slicedToArray(_useState151, 2),
-    frequencias = _useState152[0],
-    setFrequencias = _useState152[1];
   var _useState153 = useState(""),
     _useState154 = _slicedToArray(_useState153, 2),
-    qrUrl = _useState154[0],
-    setQrUrl = _useState154[1];
-  var _useState155 = useState(false),
+    eventoSel = _useState154[0],
+    setEventoSel = _useState154[1];
+  var _useState155 = useState(null),
     _useState156 = _slicedToArray(_useState155, 2),
-    gerando = _useState156[0],
-    setGerando = _useState156[1];
-  var _useState157 = useState(false),
+    sessaoAtiva = _useState156[0],
+    setSessaoAtiva = _useState156[1];
+  var _useState157 = useState([]),
     _useState158 = _slicedToArray(_useState157, 2),
-    showQR = _useState158[0],
-    setShowQR = _useState158[1];
+    frequencias = _useState158[0],
+    setFrequencias = _useState158[1];
+  var _useState159 = useState(""),
+    _useState160 = _slicedToArray(_useState159, 2),
+    qrUrl = _useState160[0],
+    setQrUrl = _useState160[1];
+  var _useState161 = useState(false),
+    _useState162 = _slicedToArray(_useState161, 2),
+    gerando = _useState162[0],
+    setGerando = _useState162[1];
+  var _useState163 = useState(false),
+    _useState164 = _slicedToArray(_useState163, 2),
+    showQR = _useState164[0],
+    setShowQR = _useState164[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
 
@@ -8624,29 +8809,29 @@ function Frequencia(_ref42) {
     return _gerarQR.apply(this, arguments);
   }
   function _gerarQR() {
-    _gerarQR = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18() {
+    _gerarQR = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19() {
       var evento, expiraEm, ref, url;
-      return _regenerator().w(function (_context18) {
-        while (1) switch (_context18.n) {
+      return _regenerator().w(function (_context20) {
+        while (1) switch (_context20.n) {
           case 0:
             if (eventoSel) {
-              _context18.n = 1;
+              _context20.n = 1;
               break;
             }
-            return _context18.a(2);
+            return _context20.a(2);
           case 1:
             evento = events.find(function (e) {
               return e.id === eventoSel;
             });
             if (evento) {
-              _context18.n = 2;
+              _context20.n = 2;
               break;
             }
-            return _context18.a(2);
+            return _context20.a(2);
           case 2:
             setGerando(true);
             expiraEm = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-            _context18.n = 3;
+            _context20.n = 3;
             return db.collection("sessoes_checkin").add({
               eventoId: eventoSel,
               eventoTitulo: evento.title,
@@ -8655,15 +8840,15 @@ function Frequencia(_ref42) {
               expiraEm: firebase.firestore.Timestamp.fromDate(expiraEm)
             });
           case 3:
-            ref = _context18.v;
+            ref = _context20.v;
             url = "".concat(window.location.origin).concat(window.location.pathname, "?checkin=").concat(ref.id);
             setQrUrl("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=".concat(encodeURIComponent(url)));
             setShowQR(true);
             setGerando(false);
           case 4:
-            return _context18.a(2);
+            return _context20.a(2);
         }
-      }, _callee18);
+      }, _callee19);
     }));
     return _gerarQR.apply(this, arguments);
   }
@@ -8671,23 +8856,23 @@ function Frequencia(_ref42) {
     return _encerrarSessao.apply(this, arguments);
   }
   function _encerrarSessao() {
-    _encerrarSessao = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19() {
-      return _regenerator().w(function (_context19) {
-        while (1) switch (_context19.n) {
+    _encerrarSessao = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20() {
+      return _regenerator().w(function (_context21) {
+        while (1) switch (_context21.n) {
           case 0:
             if (sessaoAtiva) {
-              _context19.n = 1;
+              _context21.n = 1;
               break;
             }
-            return _context19.a(2);
+            return _context21.a(2);
           case 1:
             if (window.confirm("Encerrar sessão de check-in?")) {
-              _context19.n = 2;
+              _context21.n = 2;
               break;
             }
-            return _context19.a(2);
+            return _context21.a(2);
           case 2:
-            _context19.n = 3;
+            _context21.n = 3;
             return db.collection("sessoes_checkin").doc(sessaoAtiva.id).update({
               expiraEm: firebase.firestore.Timestamp.fromDate(new Date(0))
             });
@@ -8696,9 +8881,9 @@ function Frequencia(_ref42) {
             setShowQR(false);
             setQrUrl("");
           case 4:
-            return _context19.a(2);
+            return _context21.a(2);
         }
-      }, _callee19);
+      }, _callee20);
     }));
     return _encerrarSessao.apply(this, arguments);
   }
@@ -9087,30 +9272,30 @@ function Declaracao(_ref43) {
     members = _useCollection17.data;
   var _useCollection18 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection18.data;
-  var _useState159 = useState("evento"),
-    _useState160 = _slicedToArray(_useState159, 2),
-    tipo = _useState160[0],
-    setTipo = _useState160[1]; // 'evento' | 'corista'
-  var _useState161 = useState(""),
-    _useState162 = _slicedToArray(_useState161, 2),
-    eventoSel = _useState162[0],
-    setEventoSel = _useState162[1];
-  var _useState163 = useState(""),
-    _useState164 = _slicedToArray(_useState163, 2),
-    coristaId = _useState164[0],
-    setCoristaId = _useState164[1];
-  var _useState165 = useState(new Date().getFullYear() + "-01-01"),
+  var _useState165 = useState("evento"),
     _useState166 = _slicedToArray(_useState165, 2),
-    dataInicio = _useState166[0],
-    setDataInicio = _useState166[1];
-  var _useState167 = useState(todayStr()),
+    tipo = _useState166[0],
+    setTipo = _useState166[1]; // 'evento' | 'corista'
+  var _useState167 = useState(""),
     _useState168 = _slicedToArray(_useState167, 2),
-    dataFim = _useState168[0],
-    setDataFim = _useState168[1];
-  var _useState169 = useState({}),
+    eventoSel = _useState168[0],
+    setEventoSel = _useState168[1];
+  var _useState169 = useState(""),
     _useState170 = _slicedToArray(_useState169, 2),
-    textos = _useState170[0],
-    setTextos = _useState170[1];
+    coristaId = _useState170[0],
+    setCoristaId = _useState170[1];
+  var _useState171 = useState(new Date().getFullYear() + "-01-01"),
+    _useState172 = _slicedToArray(_useState171, 2),
+    dataInicio = _useState172[0],
+    setDataInicio = _useState172[1];
+  var _useState173 = useState(todayStr()),
+    _useState174 = _slicedToArray(_useState173, 2),
+    dataFim = _useState174[0],
+    setDataFim = _useState174[1];
+  var _useState175 = useState({}),
+    _useState176 = _slicedToArray(_useState175, 2),
+    textos = _useState176[0],
+    setTextos = _useState176[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("config").doc("relatorio").get().then(function (doc) {
@@ -9561,22 +9746,22 @@ function PainelCorista(_ref45) {
     songs = _useCollection21.data;
   var _useCollection22 = useCollection("noticias"),
     noticias = _useCollection22.data;
-  var _useState171 = useState(new Date().getMonth()),
-    _useState172 = _slicedToArray(_useState171, 2),
-    mes = _useState172[0],
-    setMes = _useState172[1];
-  var _useState173 = useState(new Date().getFullYear()),
-    _useState174 = _slicedToArray(_useState173, 2),
-    ano = _useState174[0],
-    setAno = _useState174[1];
-  var _useState175 = useState({}),
-    _useState176 = _slicedToArray(_useState175, 2),
-    confirmacoes = _useState176[0],
-    setConfirmacoes = _useState176[1];
-  var _useState177 = useState(null),
+  var _useState177 = useState(new Date().getMonth()),
     _useState178 = _slicedToArray(_useState177, 2),
-    naipeOpen = _useState178[0],
-    setNaipeOpen = _useState178[1];
+    mes = _useState178[0],
+    setMes = _useState178[1];
+  var _useState179 = useState(new Date().getFullYear()),
+    _useState180 = _slicedToArray(_useState179, 2),
+    ano = _useState180[0],
+    setAno = _useState180[1];
+  var _useState181 = useState({}),
+    _useState182 = _slicedToArray(_useState181, 2),
+    confirmacoes = _useState182[0],
+    setConfirmacoes = _useState182[1];
+  var _useState183 = useState(null),
+    _useState184 = _slicedToArray(_useState183, 2),
+    naipeOpen = _useState184[0],
+    setNaipeOpen = _useState184[1];
   var cor = config.corPrimaria || COR;
   var naipe = user.voice || "";
   var naipeKey = {
@@ -9603,29 +9788,29 @@ function PainelCorista(_ref45) {
     return _confirmar.apply(this, arguments);
   }
   function _confirmar() {
-    _confirmar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20(eventoId, status) {
+    _confirmar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21(eventoId, status) {
       var snap;
-      return _regenerator().w(function (_context20) {
-        while (1) switch (_context20.n) {
+      return _regenerator().w(function (_context22) {
+        while (1) switch (_context22.n) {
           case 0:
-            _context20.n = 1;
+            _context22.n = 1;
             return db.collection("confirmacoes").where("membroNome", "==", user.name).where("eventoId", "==", eventoId).get();
           case 1:
-            snap = _context20.v;
+            snap = _context22.v;
             if (snap.empty) {
-              _context20.n = 3;
+              _context22.n = 3;
               break;
             }
-            _context20.n = 2;
+            _context22.n = 2;
             return snap.docs[0].ref.update({
               status: status,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           case 2:
-            _context20.n = 4;
+            _context22.n = 4;
             break;
           case 3:
-            _context20.n = 4;
+            _context22.n = 4;
             return db.collection("confirmacoes").add({
               membroNome: user.name,
               eventoId: eventoId,
@@ -9633,9 +9818,9 @@ function PainelCorista(_ref45) {
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           case 4:
-            return _context20.a(2);
+            return _context22.a(2);
         }
-      }, _callee20);
+      }, _callee21);
     }));
     return _confirmar.apply(this, arguments);
   }
@@ -10177,18 +10362,18 @@ function MinhaDeclaracao(_ref46) {
     config = _ref46.config;
   var _useCollection23 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection23.data;
-  var _useState179 = useState(new Date().getFullYear() + "-01-01"),
-    _useState180 = _slicedToArray(_useState179, 2),
-    dataInicio = _useState180[0],
-    setDataInicio = _useState180[1];
-  var _useState181 = useState(todayStr()),
-    _useState182 = _slicedToArray(_useState181, 2),
-    dataFim = _useState182[0],
-    setDataFim = _useState182[1];
-  var _useState183 = useState({}),
-    _useState184 = _slicedToArray(_useState183, 2),
-    textos = _useState184[0],
-    setTextos = _useState184[1];
+  var _useState185 = useState(new Date().getFullYear() + "-01-01"),
+    _useState186 = _slicedToArray(_useState185, 2),
+    dataInicio = _useState186[0],
+    setDataInicio = _useState186[1];
+  var _useState187 = useState(todayStr()),
+    _useState188 = _slicedToArray(_useState187, 2),
+    dataFim = _useState188[0],
+    setDataFim = _useState188[1];
+  var _useState189 = useState({}),
+    _useState190 = _slicedToArray(_useState189, 2),
+    textos = _useState190[0],
+    setTextos = _useState190[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("config").doc("relatorio").get().then(function (doc) {
@@ -10377,40 +10562,40 @@ function ModalNoticia(_ref47) {
     imageUrl: "",
     categoria: "Geral"
   };
-  var _useState185 = useState(noticia ? _objectSpread(_objectSpread({}, vazio), noticia) : vazio),
-    _useState186 = _slicedToArray(_useState185, 2),
-    form = _useState186[0],
-    setForm = _useState186[1];
-  var _useState187 = useState(false),
-    _useState188 = _slicedToArray(_useState187, 2),
-    salvando = _useState188[0],
-    setSalvando = _useState188[1];
-  var _useState189 = useState(""),
-    _useState190 = _slicedToArray(_useState189, 2),
-    erro = _useState190[0],
-    setErro = _useState190[1];
+  var _useState191 = useState(noticia ? _objectSpread(_objectSpread({}, vazio), noticia) : vazio),
+    _useState192 = _slicedToArray(_useState191, 2),
+    form = _useState192[0],
+    setForm = _useState192[1];
+  var _useState193 = useState(false),
+    _useState194 = _slicedToArray(_useState193, 2),
+    salvando = _useState194[0],
+    setSalvando = _useState194[1];
+  var _useState195 = useState(""),
+    _useState196 = _slicedToArray(_useState195, 2),
+    erro = _useState196[0],
+    setErro = _useState196[1];
   function salvar() {
     return _salvar7.apply(this, arguments);
   }
   function _salvar7() {
-    _salvar7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21() {
+    _salvar7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
       var d;
-      return _regenerator().w(function (_context21) {
-        while (1) switch (_context21.n) {
+      return _regenerator().w(function (_context23) {
+        while (1) switch (_context23.n) {
           case 0:
             if (form.titulo.trim()) {
-              _context21.n = 1;
+              _context23.n = 1;
               break;
             }
             setErro("Título é obrigatório.");
-            return _context21.a(2);
+            return _context23.a(2);
           case 1:
             if (form.texto.trim()) {
-              _context21.n = 2;
+              _context23.n = 2;
               break;
             }
             setErro("Texto é obrigatório.");
-            return _context21.a(2);
+            return _context23.a(2);
           case 2:
             setSalvando(true);
             d = {
@@ -10421,26 +10606,26 @@ function ModalNoticia(_ref47) {
               createdAt: noticia ? noticia.createdAt : firebase.firestore.FieldValue.serverTimestamp()
             };
             if (!noticia) {
-              _context21.n = 4;
+              _context23.n = 4;
               break;
             }
-            _context21.n = 3;
+            _context23.n = 3;
             return db.collection("noticias").doc(noticia.id).update(_objectSpread(_objectSpread({}, d), {}, {
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }));
           case 3:
-            _context21.n = 5;
+            _context23.n = 5;
             break;
           case 4:
-            _context21.n = 5;
+            _context23.n = 5;
             return db.collection("noticias").add(d);
           case 5:
             setSalvando(false);
             onClose();
           case 6:
-            return _context21.a(2);
+            return _context23.a(2);
         }
-      }, _callee21);
+      }, _callee22);
     }));
     return _salvar7.apply(this, arguments);
   }
@@ -10448,24 +10633,24 @@ function ModalNoticia(_ref47) {
     return _excluir6.apply(this, arguments);
   }
   function _excluir6() {
-    _excluir6 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
-      return _regenerator().w(function (_context22) {
-        while (1) switch (_context22.n) {
+    _excluir6 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee23() {
+      return _regenerator().w(function (_context24) {
+        while (1) switch (_context24.n) {
           case 0:
             if (window.confirm("Excluir esta notícia?")) {
-              _context22.n = 1;
+              _context24.n = 1;
               break;
             }
-            return _context22.a(2);
+            return _context24.a(2);
           case 1:
-            _context22.n = 2;
+            _context24.n = 2;
             return db.collection("noticias").doc(noticia.id).delete();
           case 2:
             onClose();
           case 3:
-            return _context22.a(2);
+            return _context24.a(2);
         }
-      }, _callee22);
+      }, _callee23);
     }));
     return _excluir6.apply(this, arguments);
   }
@@ -10687,21 +10872,21 @@ function AreaRH(_ref48) {
     noticias = _useCollection27.data;
   var _useCollection28 = useCollection("relatorios_historico"),
     relatorios = _useCollection28.data;
-  var _useState191 = useState(abaInicial || "dashboard"),
-    _useState192 = _slicedToArray(_useState191, 2),
-    aba = _useState192[0],
-    setAba = _useState192[1];
+  var _useState197 = useState(abaInicial || "dashboard"),
+    _useState198 = _slicedToArray(_useState197, 2),
+    aba = _useState198[0],
+    setAba = _useState198[1];
   useEffect(function () {
     if (abaInicial) setAba(abaInicial);
   }, [abaInicial]);
-  var _useState193 = useState(null),
-    _useState194 = _slicedToArray(_useState193, 2),
-    modalNoticia = _useState194[0],
-    setModalNoticia = _useState194[1];
-  var _useState195 = useState({}),
-    _useState196 = _slicedToArray(_useState195, 2),
-    textos = _useState196[0],
-    setTextos = _useState196[1];
+  var _useState199 = useState(null),
+    _useState200 = _slicedToArray(_useState199, 2),
+    modalNoticia = _useState200[0],
+    setModalNoticia = _useState200[1];
+  var _useState201 = useState({}),
+    _useState202 = _slicedToArray(_useState201, 2),
+    textos = _useState202[0],
+    setTextos = _useState202[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
   useEffect(function () {
@@ -10760,10 +10945,10 @@ function AreaRH(_ref48) {
   })).concat([1]));
 
   // Confirmações
-  var _useState197 = useState([]),
-    _useState198 = _slicedToArray(_useState197, 2),
-    confirmacoes = _useState198[0],
-    setConfirmacoes = _useState198[1];
+  var _useState203 = useState([]),
+    _useState204 = _slicedToArray(_useState203, 2),
+    confirmacoes = _useState204[0],
+    setConfirmacoes = _useState204[1];
   useEffect(function () {
     db.collection("confirmacoes").onSnapshot(function (snap) {
       return setConfirmacoes(snap.docs.map(function (d) {
@@ -10806,18 +10991,18 @@ function AreaRH(_ref48) {
   }];
 
   // ── DECLARAÇÕES POR CORISTA ──
-  var _useState199 = useState(""),
-    _useState200 = _slicedToArray(_useState199, 2),
-    coristaDecl = _useState200[0],
-    setCoristaDecl = _useState200[1];
-  var _useState201 = useState(new Date().getFullYear() + "-01-01"),
-    _useState202 = _slicedToArray(_useState201, 2),
-    dataInicio = _useState202[0],
-    setDataInicio = _useState202[1];
-  var _useState203 = useState(todayStr()),
-    _useState204 = _slicedToArray(_useState203, 2),
-    dataFim = _useState204[0],
-    setDataFim = _useState204[1];
+  var _useState205 = useState(""),
+    _useState206 = _slicedToArray(_useState205, 2),
+    coristaDecl = _useState206[0],
+    setCoristaDecl = _useState206[1];
+  var _useState207 = useState(new Date().getFullYear() + "-01-01"),
+    _useState208 = _slicedToArray(_useState207, 2),
+    dataInicio = _useState208[0],
+    setDataInicio = _useState208[1];
+  var _useState209 = useState(todayStr()),
+    _useState210 = _slicedToArray(_useState209, 2),
+    dataFim = _useState210[0],
+    setDataFim = _useState210[1];
   var coristaAtual = members.find(function (m) {
     return m.id === coristaDecl;
   });
@@ -11538,24 +11723,24 @@ var NAV_CORISTA = [{
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 function App() {
-  var _useState205 = useState(function () {
+  var _useState211 = useState(function () {
       try {
         return JSON.parse(localStorage.getItem("cf_user"));
       } catch (_unused) {
         return null;
       }
     }),
-    _useState206 = _slicedToArray(_useState205, 2),
-    user = _useState206[0],
-    setUser = _useState206[1];
-  var _useState207 = useState([]),
-    _useState208 = _slicedToArray(_useState207, 2),
-    members = _useState208[0],
-    setMembers = _useState208[1];
-  var _useState209 = useState("painel"),
-    _useState210 = _slicedToArray(_useState209, 2),
-    tab = _useState210[0],
-    setTab = _useState210[1];
+    _useState212 = _slicedToArray(_useState211, 2),
+    user = _useState212[0],
+    setUser = _useState212[1];
+  var _useState213 = useState([]),
+    _useState214 = _slicedToArray(_useState213, 2),
+    members = _useState214[0],
+    setMembers = _useState214[1];
+  var _useState215 = useState("painel"),
+    _useState216 = _slicedToArray(_useState215, 2),
+    tab = _useState216[0],
+    setTab = _useState216[1];
   var _useConfig = useConfig(),
     config = _useConfig.config,
     save = _useConfig.save;
