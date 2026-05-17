@@ -9177,7 +9177,7 @@ function Declaracao(_ref43) {
     }, 800);
   }
   function gerarPDFCorista() {
-    if (!coristaAtual || freqCorista.length === 0) return;
+    if (!coristaAtual) return;
     var nomeApp = config.nomeApp || "Flamboyant Coral";
     var logoUrl = config.logoUrl || LOGO_URL;
     var maestro = textos.maestro || "Maestro";
@@ -9450,14 +9450,7 @@ function Declaracao(_ref43) {
     onChange: function onChange(e) {
       return setDataFim(e.target.value);
     }
-  }))), coristaId && /*#__PURE__*/React.createElement(React.Fragment, null, freqCorista.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: "#CCC",
-      textAlign: "center",
-      padding: "16px 0"
-    }
-  }, "Nenhuma participa\xE7\xE3o registrada no per\xEDodo.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }))), coristaId && /*#__PURE__*/React.createElement(React.Fragment, null, freqCorista.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 12
     }
@@ -9491,7 +9484,14 @@ function Declaracao(_ref43) {
         flex: 1
       }
     }, f.eventoTitulo));
-  })), /*#__PURE__*/React.createElement("button", {
+  })), freqCorista.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#888",
+      padding: "8px 0 12px",
+      fontStyle: "italic"
+    }
+  }, "Nenhuma participa\xE7\xE3o no per\xEDodo \u2014 a declara\xE7\xE3o ser\xE1 gerada com dados de v\xEDnculo."), /*#__PURE__*/React.createElement("button", {
     onClick: gerarPDFCorista,
     style: {
       display: "flex",
@@ -9511,7 +9511,7 @@ function Declaracao(_ref43) {
     name: "printer",
     size: 14,
     color: "#fff"
-  }), " Gerar PDF \u2014 Declara\xE7\xE3o Individual")))));
+  }), " Gerar PDF \u2014 Declara\xE7\xE3o Individual"))));
 }
 
 // ── PLACEHOLDER ───────────────────────────────────────────────────────────────
@@ -10305,7 +10305,7 @@ function MinhaDeclaracao(_ref46) {
     var cidade = textos.cidade || "Goiânia – GO";
     var maestro = textos.maestro || "Maestro";
     var produtora = textos.produtora || "Lucia Kratz";
-    var sigLucia = textos.sigLucia || "https://raw.githubusercontent.com/luciakratz-arch/flamb/main/lucia-sig.png";
+    var sigLucia = textos.sigLucia || "https://raw.githubusercontent.com/luciakratz-arch/onix-brasil/main/lucia-sig.png";
     var sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/onix-brasil/main/paulo-sig.png";
     var hoje = new Date().toLocaleDateString("pt-BR", {
       day: "numeric",
@@ -10439,8 +10439,6 @@ function MinhaDeclaracao(_ref46) {
     color: "#fff"
   }), " Gerar Declara\xE7\xE3o PDF")));
 }
-
-// ── NOTÍCIAS / BLOG ───────────────────────────────────────────────────────────
 function ModalNoticia(_ref47) {
   var noticia = _ref47.noticia,
     onClose = _ref47.onClose,
