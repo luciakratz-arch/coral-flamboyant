@@ -1139,7 +1139,7 @@ function Login(_ref7) {
     });
   }
   function entrarRH() {
-    if (senha === "flamboyant1234") onLogin({
+    if (senha === "rh1234") onLogin({
       name: "RH",
       isAdmin: false,
       role: "rh"
