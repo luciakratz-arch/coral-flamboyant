@@ -11399,64 +11399,7 @@ function AreaRH(_ref48) {
     onChange: function onChange(e) {
       return setDataFim(e.target.value);
     }
-  }))), coristaDecl && (freqCorista.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: "#CCC",
-      textAlign: "center",
-      padding: "16px 0"
-    }
-  }, "Nenhuma participa\xE7\xE3o registrada.") : /*#__PURE__*/React.createElement(React.Fragment, null, freqCorista.map(function (f, i) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: f.id,
-      style: {
-        display: "flex",
-        gap: 10,
-        padding: "8px 0",
-        borderBottom: "1px solid #F5F0F0",
-        alignItems: "center"
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: "#AAA",
-        minWidth: 20
-      }
-    }, i + 1), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: "#888",
-        minWidth: 90
-      }
-    }, f.eventoData ? new Date(f.eventoData + "T12:00:00").toLocaleDateString("pt-BR") : ""), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        fontWeight: 600,
-        color: "#1A1D23"
-      }
-    }, f.eventoTitulo));
-  }), /*#__PURE__*/React.createElement("button", {
-    onClick: gerarDeclCorista,
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      padding: "11px 20px",
-      background: cor,
-      color: "#fff",
-      border: "none",
-      borderRadius: 10,
-      fontSize: 13,
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      marginTop: 14
-    }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "printer",
-    size: 14,
-    color: "#fff"
-  }), " Gerar Declara\xE7\xE3o PDF"))))), aba === "historico" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }))), coristaDecl && /*#__PURE__*/React.createElement(React.Fragment, null, freqCorista.length > 0 && /*#__PURE__*/React.createElement("div", {style:{marginBottom:12}}, freqCorista.map(function(f,i){ return /*#__PURE__*/React.createElement("div",{key:f.id,style:{display:"flex",gap:10,padding:"8px 0",borderBottom:"1px solid #F5F0F0",alignItems:"center"}}, /*#__PURE__*/React.createElement("span",{style:{fontSize:12,color:"#AAA",minWidth:20}},i+1), /*#__PURE__*/React.createElement("span",{style:{fontSize:12,color:"#888",minWidth:90}},f.eventoData?new Date(f.eventoData+"T12:00:00").toLocaleDateString("pt-BR"):""), /*#__PURE__*/React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#1A1D23"}},f.eventoTitulo)); })), freqCorista.length === 0 && /*#__PURE__*/React.createElement("div",{style:{fontSize:12,color:"#888",padding:"8px 0 12px",fontStyle:"italic"}},"Nenhuma participação no período — a declaração será gerada com dados de vínculo."), /*#__PURE__*/React.createElement("button",{onClick:gerarDeclCorista,style:{display:"flex",alignItems:"center",gap:8,padding:"11px 20px",background:cor,color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}, /*#__PURE__*/React.createElement(Icon,{name:"printer",size:14,color:"#fff"}), " Gerar Declaração PDF")))), aba === "historico" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
