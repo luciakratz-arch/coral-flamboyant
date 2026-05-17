@@ -1,5 +1,4 @@
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t.return || t.return(); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -6272,31 +6271,20 @@ function Apresentacao(_ref21) {
     _useState112 = _slicedToArray(_useState111, 2),
     setlist = _useState112[0],
     setSetlist = _useState112[1];
-  var _useState113 = useState({}),
+  var _useState113 = useState(null),
     _useState114 = _slicedToArray(_useState113, 2),
-    planos = _useState114[0],
-    setPlanos = _useState114[1];
+    tocando = _useState114[0],
+    setTocando = _useState114[1];
+  var _useState115 = useState(null),
+    _useState116 = _slicedToArray(_useState115, 2),
+    dragIdx = _useState116[0],
+    setDragIdx = _useState116[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
   useEffect(function () {
     if (eventoSel) setSetlist(eventoSel.setlist || []);else setSetlist([]);
-    setPlanos({});
+    setTocando(null);
   }, [eventoSel === null || eventoSel === void 0 ? void 0 : eventoSel.id]);
-  function togglePlano(id) {
-    setPlanos(function (p) {
-      return _objectSpread(_objectSpread({}, p), {}, _defineProperty({}, id, p[id] === "B" ? "A" : "B"));
-    });
-  }
-  function getUrl(s) {
-    var plano = planos[s.id] || "A";
-    var url = plano === "B" ? s.playbackB || s.playback || s.audioOriginal : s.playback || s.audioOriginal;
-    if (!url) return null;
-    var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (dr) return "https://drive.google.com/file/d/" + dr[1] + "/preview";
-    var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (yt) return "https://www.youtube.com/embed/" + yt[1] + "?autoplay=0";
-    return url;
-  }
   var proximos = events.filter(function (e) {
     var _e$setlist;
     return e.date >= today && ((_e$setlist = e.setlist) === null || _e$setlist === void 0 ? void 0 : _e$setlist.length) > 0;
@@ -6338,82 +6326,21 @@ function Apresentacao(_ref21) {
   }
   function moverCima(idx) {
     if (idx === 0) return;
-    var n = _toConsumableArray(setlist);
-    var _ref22 = [n[idx], n[idx - 1]];
-    n[idx - 1] = _ref22[0];
-    n[idx] = _ref22[1];
-    salvarOrdem(n);
+    var nova = _toConsumableArray(setlist);
+    var _ref22 = [nova[idx], nova[idx - 1]];
+    nova[idx - 1] = _ref22[0];
+    nova[idx] = _ref22[1];
+    salvarOrdem(nova);
   }
   function moverBaixo(idx) {
     if (idx === setlist.length - 1) return;
-    var n = _toConsumableArray(setlist);
-    var _ref23 = [n[idx + 1], n[idx]];
-    n[idx] = _ref23[0];
-    n[idx + 1] = _ref23[1];
-    salvarOrdem(n);
+    var nova = _toConsumableArray(setlist);
+    var _ref23 = [nova[idx + 1], nova[idx]];
+    nova[idx] = _ref23[0];
+    nova[idx + 1] = _ref23[1];
+    salvarOrdem(nova);
   }
-  function prepararOffline() {
-    return _prepararOffline.apply(this, arguments);
-  }
-  function _prepararOffline() {
-    _prepararOffline = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee16() {
-      var _iterator, _step, s, plano, url, yt, dr, urlAbrir, _t;
-      return _regenerator().w(function (_context16) {
-        while (1) switch (_context16.p = _context16.n) {
-          case 0:
-            _iterator = _createForOfIteratorHelper(setlist);
-            _context16.p = 1;
-            _iterator.s();
-          case 2:
-            if ((_step = _iterator.n()).done) {
-              _context16.n = 6;
-              break;
-            }
-            s = _step.value;
-            plano = planos[s.id] || "A";
-            url = plano === "B" ? s.playbackB || s.playback || s.audioOriginal : s.playback || s.audioOriginal;
-            if (url) {
-              _context16.n = 3;
-              break;
-            }
-            return _context16.a(3, 5);
-          case 3:
-            yt = url.match(/(?:youtube\.com|youtu\.be)/);
-            if (!yt) {
-              _context16.n = 4;
-              break;
-            }
-            return _context16.a(3, 5);
-          case 4:
-            dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            urlAbrir = dr ? "https://drive.google.com/file/d/" + dr[1] + "/view" : url;
-            window.open(urlAbrir, "_blank");
-            _context16.n = 5;
-            return new Promise(function (r) {
-              return setTimeout(r, 800);
-            });
-          case 5:
-            _context16.n = 2;
-            break;
-          case 6:
-            _context16.n = 8;
-            break;
-          case 7:
-            _context16.p = 7;
-            _t = _context16.v;
-            _iterator.e(_t);
-          case 8:
-            _context16.p = 8;
-            _iterator.f();
-            return _context16.f(8);
-          case 9:
-            return _context16.a(2);
-        }
-      }, _callee16, null, [[1, 7, 8, 9]]);
-    }));
-    return _prepararOffline.apply(this, arguments);
-  }
-  var mesaUrl = eventoSel ? window.location.origin + window.location.pathname + "?mesa=" + eventoSel.id : "";
+  var mesaUrl = eventoSel ? "".concat(window.location.origin).concat(window.location.pathname, "?mesa=").concat(eventoSel.id) : "";
   var card = {
     background: "#fff",
     borderRadius: 12,
@@ -6460,9 +6387,17 @@ function Apresentacao(_ref21) {
       color: "#1A1D23",
       marginBottom: 12
     }
-  }, "Selecionar Evento"), /*#__PURE__*/React.createElement("select", {
+  }, "Selecionar Evento"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("select", {
     style: _objectSpread(_objectSpread({}, inp), {}, {
-      width: "100%"
+      flex: 1,
+      minWidth: 200
     }),
     value: (eventoSel === null || eventoSel === void 0 ? void 0 : eventoSel.id) || "",
     onChange: function onChange(e) {
@@ -6487,7 +6422,13 @@ function Apresentacao(_ref21) {
       key: e.id,
       value: e.id
     }, e.date, " \u2014 ", e.title);
-  })))), eventoSel && mesaUrl && /*#__PURE__*/React.createElement("div", {
+  })))), eventoSel && setlist.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#E65100",
+      marginTop: 8
+    }
+  }, "Este evento n\xE3o tem m\xFAsicas no repert\xF3rio. Adicione pelo m\xF3dulo Agenda \u2192 editar evento.")), eventoSel && mesaUrl && /*#__PURE__*/React.createElement("div", {
     style: {
       background: "#1A1D23",
       borderRadius: 12,
@@ -6496,18 +6437,28 @@ function Apresentacao(_ref21) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: "#fff",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
       marginBottom: 6
     }
-  }, "Mesa de Som \u2014 Painel do Sonoplasta"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "monitor-speaker",
+    size: 16,
+    color: "#AAA"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#fff"
+    }
+  }, "Mesa de Som \u2014 Painel do Sonoplasta")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#888",
       marginBottom: 10
     }
-  }, "Envie este link para o sonoplasta no dia da apresenta\xE7\xE3o."), /*#__PURE__*/React.createElement("div", {
+  }, "Acesso p\xFAblico sem senha \u2014 envie este link para o sonoplasta no dia da apresenta\xE7\xE3o."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -6554,45 +6505,6 @@ function Apresentacao(_ref21) {
       textDecoration: "none"
     }
   }, "Abrir"))), eventoSel && setlist.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: _objectSpread(_objectSpread({}, card), {}, {
-      background: "#FFF8E1",
-      border: "1px solid #FFE082",
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      flexWrap: "wrap"
-    })
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: "#1A1D23"
-    }
-  }, "\uD83D\uDCE5 Salvar \xE1udios para uso offline"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "#888",
-      marginTop: 2
-    }
-  }, "Abre cada arquivo do Drive para voc\xEA salvar no dispositivo antes do show.")), /*#__PURE__*/React.createElement("button", {
-    onClick: prepararOffline,
-    style: {
-      padding: "10px 20px",
-      background: cor,
-      color: "#fff",
-      border: "none",
-      borderRadius: 10,
-      fontSize: 13,
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      whiteSpace: "nowrap"
-    }
-  }, "\uD83D\uDCC2 Abrir \xE1udios")), eventoSel && setlist.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -6607,13 +6519,17 @@ function Apresentacao(_ref21) {
       gap: 8,
       marginBottom: 12
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "music",
+    size: 16,
+    color: cor
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
       color: cor
     }
-  }, "\uD83C\uDFB5 Setlist"), /*#__PURE__*/React.createElement("div", {
+  }, "Setlist"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#AAA"
@@ -6624,9 +6540,12 @@ function Apresentacao(_ref21) {
       color: "#CCC",
       marginLeft: "auto"
     }
-  }, "\u2191\u2193 reordenar")), setlist.map(function (s, i) {
+  }, "\u2191\u2193 para reordenar")), setlist.map(function (s, i) {
     return /*#__PURE__*/React.createElement("div", {
-      key: s.id || i,
+      key: i,
+      onClick: function onClick() {
+        return setTocando(s);
+      },
       style: {
         display: "flex",
         alignItems: "center",
@@ -6634,8 +6553,10 @@ function Apresentacao(_ref21) {
         padding: "10px 12px",
         borderRadius: 8,
         marginBottom: 6,
-        background: "#F9F5F5",
-        border: "1px solid transparent"
+        cursor: "pointer",
+        background: (tocando === null || tocando === void 0 ? void 0 : tocando.id) === s.id ? cor + "15" : "#F9F5F5",
+        border: (tocando === null || tocando === void 0 ? void 0 : tocando.id) === s.id ? "1px solid ".concat(cor, "33") : "1px solid transparent",
+        transition: "background 0.15s"
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -6660,24 +6581,7 @@ function Apresentacao(_ref21) {
         fontSize: 11,
         color: "#AAA"
       }
-    }, s.compositor)), /*#__PURE__*/React.createElement("button", {
-      onClick: function onClick(e) {
-        e.stopPropagation();
-        togglePlano(s.id);
-      },
-      style: {
-        padding: "3px 8px",
-        borderRadius: 6,
-        border: "1.5px solid " + (planos[s.id] === "B" ? "#E65100" : cor),
-        background: planos[s.id] === "B" ? "#E65100" : cor,
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        minWidth: 32
-      }
-    }, planos[s.id] === "B" ? "B" : "A"), /*#__PURE__*/React.createElement("div", {
+    }, s.compositor)), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         flexDirection: "column",
@@ -6693,10 +6597,13 @@ function Apresentacao(_ref21) {
         border: "none",
         cursor: "pointer",
         padding: 2,
-        fontSize: 12,
-        color: i === 0 ? "#DDD" : "#888"
+        color: i === 0 ? "#EEE" : "#888"
       }
-    }, "\u25B2"), /*#__PURE__*/React.createElement("button", {
+    }, /*#__PURE__*/React.createElement(Icon, {
+      name: "chevron-up",
+      size: 14,
+      color: i === 0 ? "#EEE" : "#888"
+    })), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick(e) {
         e.stopPropagation();
         moverBaixo(i);
@@ -6706,106 +6613,158 @@ function Apresentacao(_ref21) {
         border: "none",
         cursor: "pointer",
         padding: 2,
-        fontSize: 12,
-        color: i === setlist.length - 1 ? "#DDD" : "#888"
+        color: i === setlist.length - 1 ? "#EEE" : "#888"
       }
-    }, "\u25BC")));
+    }, /*#__PURE__*/React.createElement(Icon, {
+      name: "chevron-down",
+      size: 14,
+      color: i === setlist.length - 1 ? "#EEE" : "#888"
+    }))));
   })), /*#__PURE__*/React.createElement("div", {
     style: card
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: cor,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
       marginBottom: 12
     }
-  }, "\uD83D\uDD0A Player"), setlist.map(function (s, i) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: s.id + "-" + (planos[s.id] || "A"),
-      style: {
-        marginBottom: 16
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 6
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        color: cor,
-        fontWeight: 700,
-        minWidth: 22
-      }
-    }, i + 1), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 13,
-        fontWeight: 600,
-        color: "#1A1D23"
-      }
-    }, s.title), s.compositor && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: "#AAA"
-      }
-    }, s.compositor)), /*#__PURE__*/React.createElement("span", {
-      style: {
-        padding: "2px 8px",
-        borderRadius: 6,
-        background: planos[s.id] === "B" ? "#E65100" : cor,
-        color: "#fff",
-        fontSize: 10,
-        fontWeight: 700
-      }
-    }, "Plano ", planos[s.id] || "A")), getUrl(s) ? /*#__PURE__*/React.createElement("iframe", {
-      src: getUrl(s),
-      style: {
-        width: "100%",
-        height: 80,
-        border: "none",
-        borderRadius: 8,
-        display: "block"
-      },
-      allow: "autoplay",
-      title: s.title
-    }) : /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: "10px 16px",
-        background: "#F5F5F5",
-        borderRadius: 8,
-        textAlign: "center",
-        color: "#AAA",
-        fontSize: 12
-      }
-    }, "Sem playback Plano ", planos[s.id] || "A", " cadastrado"));
-  }))), !eventoSel && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "volume-2",
+    size: 16,
+    color: cor
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: cor
+    }
+  }, "Player")), !tocando ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 20px",
+      color: "#CCC",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "music",
+    size: 40,
+    color: "#EEE"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13
+    }
+  }, "Clique em uma m\xFAsica para reproduzir")) : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#1A1D23",
+      marginBottom: 4
+    }
+  }, tocando.title), tocando.compositor && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#AAA",
+      marginBottom: 12
+    }
+  }, tocando.compositor), tocando.playback || tocando.audioOriginal ? /*#__PURE__*/React.createElement("iframe", {
+    src: function () {
+      var url = tocando.playback || tocando.audioOriginal;
+      var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (yt) return "https://www.youtube.com/embed/".concat(yt[1], "?autoplay=1");
+      var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (dr) return "https://drive.google.com/file/d/".concat(dr[1], "/preview");
+      return url;
+    }(),
+    style: {
+      width: "100%",
+      height: 200,
+      border: "none",
+      borderRadius: 8
+    },
+    allow: "autoplay; fullscreen",
+    title: tocando.title
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "20px",
+      background: "#F5F5F5",
+      borderRadius: 8,
+      textAlign: "center",
+      color: "#AAA",
+      fontSize: 13
+    }
+  }, "Esta m\xFAsica n\xE3o tem playback cadastrado."), setlist[setlist.findIndex(function (s) {
+    return s.id === tocando.id;
+  }) + 1] && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "8px 12px",
+      background: "#F9F5F5",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "skip-forward",
+    size: 13,
+    color: "#AAA"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#AAA"
+    }
+  }, "A seguir: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#1A1D23",
+      fontWeight: 600
+    }
+  }, setlist[setlist.findIndex(function (s) {
+    return s.id === tocando.id;
+  }) + 1].title)), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setTocando(setlist[setlist.findIndex(function (s) {
+        return s.id === tocando.id;
+      }) + 1]);
+    },
+    style: {
+      marginLeft: "auto",
+      padding: "4px 10px",
+      background: cor,
+      color: "#fff",
+      border: "none",
+      borderRadius: 6,
+      fontSize: 11,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "Pr\xF3xima"))))), !eventoSel && /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, card), {}, {
       textAlign: "center",
       padding: "48px 20px",
       color: "#CCC"
     })
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "qr-code",
+    size: 48,
+    color: "#EEE"
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 48,
-      marginBottom: 12
-    }
-  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
-    style: {
+      marginTop: 12,
       fontSize: 15,
-      fontWeight: 600
+      fontWeight: 600,
+      color: "#CCC"
     }
   }, "Selecione um evento acima"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       marginTop: 4
     }
-  }, "Para gerenciar o setlist e playbacks")));
+  }, "Para gerenciar o setlist e playbacks da apresenta\xE7\xE3o")));
 }
 
 // ── FREQUÊNCIA POR EVENTOS (usado no Relatório) ───────────────────────────────
@@ -6912,10 +6871,10 @@ function FrequenciaEventos(_ref24) {
 // ── FREQUÊNCIA DE ACESSO ──────────────────────────────────────────────────────
 function FrequenciaAcesso(_ref25) {
   var config = _ref25.config;
-  var _useState115 = useState([]),
-    _useState116 = _slicedToArray(_useState115, 2),
-    acessos = _useState116[0],
-    setAcessos = _useState116[1];
+  var _useState117 = useState([]),
+    _useState118 = _slicedToArray(_useState117, 2),
+    acessos = _useState118[0],
+    setAcessos = _useState118[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("acessos").onSnapshot(function (snap) {
@@ -7195,34 +7154,34 @@ function Relatorios(_ref32) {
   var _useCollection14 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection14.data;
   var cor = config.corPrimaria || COR;
-  var _useState117 = useState(new Date().getFullYear() + "-01-01"),
-    _useState118 = _slicedToArray(_useState117, 2),
-    dataInicio = _useState118[0],
-    setDataInicio = _useState118[1];
-  var _useState119 = useState(todayStr()),
+  var _useState119 = useState(new Date().getFullYear() + "-01-01"),
     _useState120 = _slicedToArray(_useState119, 2),
-    dataFim = _useState120[0],
-    setDataFim = _useState120[1];
-  var _useState121 = useState("todos"),
+    dataInicio = _useState120[0],
+    setDataInicio = _useState120[1];
+  var _useState121 = useState(todayStr()),
     _useState122 = _slicedToArray(_useState121, 2),
-    eventoFiltro = _useState122[0],
-    setEventoFiltro = _useState122[1];
-  var _useState123 = useState({}),
+    dataFim = _useState122[0],
+    setDataFim = _useState122[1];
+  var _useState123 = useState("todos"),
     _useState124 = _slicedToArray(_useState123, 2),
-    textos = _useState124[0],
-    setTextos = _useState124[1];
-  var _useState125 = useState(false),
+    eventoFiltro = _useState124[0],
+    setEventoFiltro = _useState124[1];
+  var _useState125 = useState({}),
     _useState126 = _slicedToArray(_useState125, 2),
-    editTextos = _useState126[0],
-    setEditTextos = _useState126[1];
-  var _useState127 = useState({}),
+    textos = _useState126[0],
+    setTextos = _useState126[1];
+  var _useState127 = useState(false),
     _useState128 = _slicedToArray(_useState127, 2),
-    formTextos = _useState128[0],
-    setFormTextos = _useState128[1];
-  var _useState129 = useState(false),
+    editTextos = _useState128[0],
+    setEditTextos = _useState128[1];
+  var _useState129 = useState({}),
     _useState130 = _slicedToArray(_useState129, 2),
-    salvandoTextos = _useState130[0],
-    setSalvandoTextos = _useState130[1];
+    formTextos = _useState130[0],
+    setFormTextos = _useState130[1];
+  var _useState131 = useState(false),
+    _useState132 = _slicedToArray(_useState131, 2),
+    salvandoTextos = _useState132[0],
+    setSalvandoTextos = _useState132[1];
 
   // Carregar textos qualitativos do Firebase
   useEffect(function () {
@@ -7237,12 +7196,12 @@ function Relatorios(_ref32) {
     return _salvarTextos.apply(this, arguments);
   } // Filtrar eventos por período
   function _salvarTextos() {
-    _salvarTextos = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17() {
-      return _regenerator().w(function (_context17) {
-        while (1) switch (_context17.n) {
+    _salvarTextos = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee16() {
+      return _regenerator().w(function (_context16) {
+        while (1) switch (_context16.n) {
           case 0:
             setSalvandoTextos(true);
-            _context17.n = 1;
+            _context16.n = 1;
             return db.collection("config").doc("relatorio").set(formTextos, {
               merge: true
             });
@@ -7251,9 +7210,9 @@ function Relatorios(_ref32) {
             setSalvandoTextos(false);
             setEditTextos(false);
           case 2:
-            return _context17.a(2);
+            return _context16.a(2);
         }
-      }, _callee17);
+      }, _callee16);
     }));
     return _salvarTextos.apply(this, arguments);
   }
@@ -8188,34 +8147,34 @@ function Relatorios(_ref32) {
 function CheckinPublico(_ref41) {
   var sessaoId = _ref41.sessaoId,
     config = _ref41.config;
-  var _useState131 = useState(null),
-    _useState132 = _slicedToArray(_useState131, 2),
-    sessao = _useState132[0],
-    setSessao = _useState132[1];
   var _useState133 = useState(null),
     _useState134 = _slicedToArray(_useState133, 2),
-    membro = _useState134[0],
-    setMembro = _useState134[1];
-  var _useState135 = useState([]),
+    sessao = _useState134[0],
+    setSessao = _useState134[1];
+  var _useState135 = useState(null),
     _useState136 = _slicedToArray(_useState135, 2),
-    members = _useState136[0],
-    setMembers = _useState136[1];
-  var _useState137 = useState(""),
+    membro = _useState136[0],
+    setMembro = _useState136[1];
+  var _useState137 = useState([]),
     _useState138 = _slicedToArray(_useState137, 2),
-    busca = _useState138[0],
-    setBusca = _useState138[1];
-  var _useState139 = useState([]),
+    members = _useState138[0],
+    setMembers = _useState138[1];
+  var _useState139 = useState(""),
     _useState140 = _slicedToArray(_useState139, 2),
-    sugestoes = _useState140[0],
-    setSugestoes = _useState140[1];
-  var _useState141 = useState(null),
+    busca = _useState140[0],
+    setBusca = _useState140[1];
+  var _useState141 = useState([]),
     _useState142 = _slicedToArray(_useState141, 2),
-    status = _useState142[0],
-    setStatus = _useState142[1]; // null | 'ok' | 'erro' | 'expirado'
-  var _useState143 = useState(true),
+    sugestoes = _useState142[0],
+    setSugestoes = _useState142[1];
+  var _useState143 = useState(null),
     _useState144 = _slicedToArray(_useState143, 2),
-    loading = _useState144[0],
-    setLoading = _useState144[1];
+    status = _useState144[0],
+    setStatus = _useState144[1]; // null | 'ok' | 'erro' | 'expirado'
+  var _useState145 = useState(true),
+    _useState146 = _slicedToArray(_useState145, 2),
+    loading = _useState146[0],
+    setLoading = _useState146[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     // Carregar sessão
@@ -8260,24 +8219,24 @@ function CheckinPublico(_ref41) {
     return _confirmarPresenca.apply(this, arguments);
   }
   function _confirmarPresenca() {
-    _confirmarPresenca = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18(m) {
+    _confirmarPresenca = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17(m) {
       var snap;
-      return _regenerator().w(function (_context18) {
-        while (1) switch (_context18.n) {
+      return _regenerator().w(function (_context17) {
+        while (1) switch (_context17.n) {
           case 0:
-            _context18.n = 1;
+            _context17.n = 1;
             return db.collection("frequencias").where("sessaoId", "==", sessaoId).where("membroId", "==", m.id).get();
           case 1:
-            snap = _context18.v;
+            snap = _context17.v;
             if (snap.empty) {
-              _context18.n = 2;
+              _context17.n = 2;
               break;
             }
             setMembro(m);
             setStatus("jaRegistrado");
-            return _context18.a(2);
+            return _context17.a(2);
           case 2:
-            _context18.n = 3;
+            _context17.n = 3;
             return db.collection("frequencias").add({
               sessaoId: sessaoId,
               eventoId: sessao.eventoId,
@@ -8293,9 +8252,9 @@ function CheckinPublico(_ref41) {
             setMembro(m);
             setStatus("ok");
           case 4:
-            return _context18.a(2);
+            return _context17.a(2);
         }
-      }, _callee18);
+      }, _callee17);
     }));
     return _confirmarPresenca.apply(this, arguments);
   }
@@ -8588,30 +8547,30 @@ function Frequencia(_ref42) {
   var config = _ref42.config;
   var _useCollection15 = useCollection("events", "date"),
     events = _useCollection15.data;
-  var _useState145 = useState(""),
-    _useState146 = _slicedToArray(_useState145, 2),
-    eventoSel = _useState146[0],
-    setEventoSel = _useState146[1];
-  var _useState147 = useState(null),
+  var _useState147 = useState(""),
     _useState148 = _slicedToArray(_useState147, 2),
-    sessaoAtiva = _useState148[0],
-    setSessaoAtiva = _useState148[1];
-  var _useState149 = useState([]),
+    eventoSel = _useState148[0],
+    setEventoSel = _useState148[1];
+  var _useState149 = useState(null),
     _useState150 = _slicedToArray(_useState149, 2),
-    frequencias = _useState150[0],
-    setFrequencias = _useState150[1];
-  var _useState151 = useState(""),
+    sessaoAtiva = _useState150[0],
+    setSessaoAtiva = _useState150[1];
+  var _useState151 = useState([]),
     _useState152 = _slicedToArray(_useState151, 2),
-    qrUrl = _useState152[0],
-    setQrUrl = _useState152[1];
-  var _useState153 = useState(false),
+    frequencias = _useState152[0],
+    setFrequencias = _useState152[1];
+  var _useState153 = useState(""),
     _useState154 = _slicedToArray(_useState153, 2),
-    gerando = _useState154[0],
-    setGerando = _useState154[1];
+    qrUrl = _useState154[0],
+    setQrUrl = _useState154[1];
   var _useState155 = useState(false),
     _useState156 = _slicedToArray(_useState155, 2),
-    showQR = _useState156[0],
-    setShowQR = _useState156[1];
+    gerando = _useState156[0],
+    setGerando = _useState156[1];
+  var _useState157 = useState(false),
+    _useState158 = _slicedToArray(_useState157, 2),
+    showQR = _useState158[0],
+    setShowQR = _useState158[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
 
@@ -8661,29 +8620,29 @@ function Frequencia(_ref42) {
     return _gerarQR.apply(this, arguments);
   }
   function _gerarQR() {
-    _gerarQR = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19() {
+    _gerarQR = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18() {
       var evento, expiraEm, ref, url;
-      return _regenerator().w(function (_context19) {
-        while (1) switch (_context19.n) {
+      return _regenerator().w(function (_context18) {
+        while (1) switch (_context18.n) {
           case 0:
             if (eventoSel) {
-              _context19.n = 1;
+              _context18.n = 1;
               break;
             }
-            return _context19.a(2);
+            return _context18.a(2);
           case 1:
             evento = events.find(function (e) {
               return e.id === eventoSel;
             });
             if (evento) {
-              _context19.n = 2;
+              _context18.n = 2;
               break;
             }
-            return _context19.a(2);
+            return _context18.a(2);
           case 2:
             setGerando(true);
             expiraEm = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-            _context19.n = 3;
+            _context18.n = 3;
             return db.collection("sessoes_checkin").add({
               eventoId: eventoSel,
               eventoTitulo: evento.title,
@@ -8692,15 +8651,15 @@ function Frequencia(_ref42) {
               expiraEm: firebase.firestore.Timestamp.fromDate(expiraEm)
             });
           case 3:
-            ref = _context19.v;
+            ref = _context18.v;
             url = "".concat(window.location.origin).concat(window.location.pathname, "?checkin=").concat(ref.id);
             setQrUrl("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=".concat(encodeURIComponent(url)));
             setShowQR(true);
             setGerando(false);
           case 4:
-            return _context19.a(2);
+            return _context18.a(2);
         }
-      }, _callee19);
+      }, _callee18);
     }));
     return _gerarQR.apply(this, arguments);
   }
@@ -8708,23 +8667,23 @@ function Frequencia(_ref42) {
     return _encerrarSessao.apply(this, arguments);
   }
   function _encerrarSessao() {
-    _encerrarSessao = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20() {
-      return _regenerator().w(function (_context20) {
-        while (1) switch (_context20.n) {
+    _encerrarSessao = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19() {
+      return _regenerator().w(function (_context19) {
+        while (1) switch (_context19.n) {
           case 0:
             if (sessaoAtiva) {
-              _context20.n = 1;
+              _context19.n = 1;
               break;
             }
-            return _context20.a(2);
+            return _context19.a(2);
           case 1:
             if (window.confirm("Encerrar sessão de check-in?")) {
-              _context20.n = 2;
+              _context19.n = 2;
               break;
             }
-            return _context20.a(2);
+            return _context19.a(2);
           case 2:
-            _context20.n = 3;
+            _context19.n = 3;
             return db.collection("sessoes_checkin").doc(sessaoAtiva.id).update({
               expiraEm: firebase.firestore.Timestamp.fromDate(new Date(0))
             });
@@ -8733,9 +8692,9 @@ function Frequencia(_ref42) {
             setShowQR(false);
             setQrUrl("");
           case 4:
-            return _context20.a(2);
+            return _context19.a(2);
         }
-      }, _callee20);
+      }, _callee19);
     }));
     return _encerrarSessao.apply(this, arguments);
   }
@@ -9124,30 +9083,30 @@ function Declaracao(_ref43) {
     members = _useCollection17.data;
   var _useCollection18 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection18.data;
-  var _useState157 = useState("evento"),
-    _useState158 = _slicedToArray(_useState157, 2),
-    tipo = _useState158[0],
-    setTipo = _useState158[1]; // 'evento' | 'corista'
-  var _useState159 = useState(""),
+  var _useState159 = useState("evento"),
     _useState160 = _slicedToArray(_useState159, 2),
-    eventoSel = _useState160[0],
-    setEventoSel = _useState160[1];
+    tipo = _useState160[0],
+    setTipo = _useState160[1]; // 'evento' | 'corista'
   var _useState161 = useState(""),
     _useState162 = _slicedToArray(_useState161, 2),
-    coristaId = _useState162[0],
-    setCoristaId = _useState162[1];
-  var _useState163 = useState(new Date().getFullYear() + "-01-01"),
+    eventoSel = _useState162[0],
+    setEventoSel = _useState162[1];
+  var _useState163 = useState(""),
     _useState164 = _slicedToArray(_useState163, 2),
-    dataInicio = _useState164[0],
-    setDataInicio = _useState164[1];
-  var _useState165 = useState(todayStr()),
+    coristaId = _useState164[0],
+    setCoristaId = _useState164[1];
+  var _useState165 = useState(new Date().getFullYear() + "-01-01"),
     _useState166 = _slicedToArray(_useState165, 2),
-    dataFim = _useState166[0],
-    setDataFim = _useState166[1];
-  var _useState167 = useState({}),
+    dataInicio = _useState166[0],
+    setDataInicio = _useState166[1];
+  var _useState167 = useState(todayStr()),
     _useState168 = _slicedToArray(_useState167, 2),
-    textos = _useState168[0],
-    setTextos = _useState168[1];
+    dataFim = _useState168[0],
+    setDataFim = _useState168[1];
+  var _useState169 = useState({}),
+    _useState170 = _slicedToArray(_useState169, 2),
+    textos = _useState170[0],
+    setTextos = _useState170[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("config").doc("relatorio").get().then(function (doc) {
@@ -9598,22 +9557,26 @@ function PainelCorista(_ref45) {
     songs = _useCollection21.data;
   var _useCollection22 = useCollection("noticias"),
     noticias = _useCollection22.data;
-  var _useState169 = useState(new Date().getMonth()),
-    _useState170 = _slicedToArray(_useState169, 2),
-    mes = _useState170[0],
-    setMes = _useState170[1];
-  var _useState171 = useState(new Date().getFullYear()),
+  var _useState171 = useState(new Date().getMonth()),
     _useState172 = _slicedToArray(_useState171, 2),
-    ano = _useState172[0],
-    setAno = _useState172[1];
-  var _useState173 = useState({}),
+    mes = _useState172[0],
+    setMes = _useState172[1];
+  var _useState173 = useState(new Date().getFullYear()),
     _useState174 = _slicedToArray(_useState173, 2),
-    confirmacoes = _useState174[0],
-    setConfirmacoes = _useState174[1];
-  var _useState175 = useState(null),
+    ano = _useState174[0],
+    setAno = _useState174[1];
+  var _useState175 = useState({}),
     _useState176 = _slicedToArray(_useState175, 2),
-    naipeOpen = _useState176[0],
-    setNaipeOpen = _useState176[1];
+    confirmacoes = _useState176[0],
+    setConfirmacoes = _useState176[1];
+  var _useState177 = useState(null),
+    _useState178 = _slicedToArray(_useState177, 2),
+    naipeOpen = _useState178[0],
+    setNaipeOpen = _useState178[1];
+  var _useState179 = useState(false),
+    _useState180 = _slicedToArray(_useState179, 2),
+    modalNoticiaCorista = _useState180[0],
+    setModalNoticiaCorista = _useState180[1];
   var cor = config.corPrimaria || COR;
   var naipe = user.voice || "";
   var naipeKey = {
@@ -9640,29 +9603,29 @@ function PainelCorista(_ref45) {
     return _confirmar.apply(this, arguments);
   }
   function _confirmar() {
-    _confirmar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21(eventoId, status) {
+    _confirmar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20(eventoId, status) {
       var snap;
-      return _regenerator().w(function (_context21) {
-        while (1) switch (_context21.n) {
+      return _regenerator().w(function (_context20) {
+        while (1) switch (_context20.n) {
           case 0:
-            _context21.n = 1;
+            _context20.n = 1;
             return db.collection("confirmacoes").where("membroNome", "==", user.name).where("eventoId", "==", eventoId).get();
           case 1:
-            snap = _context21.v;
+            snap = _context20.v;
             if (snap.empty) {
-              _context21.n = 3;
+              _context20.n = 3;
               break;
             }
-            _context21.n = 2;
+            _context20.n = 2;
             return snap.docs[0].ref.update({
               status: status,
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           case 2:
-            _context21.n = 4;
+            _context20.n = 4;
             break;
           case 3:
-            _context21.n = 4;
+            _context20.n = 4;
             return db.collection("confirmacoes").add({
               membroNome: user.name,
               eventoId: eventoId,
@@ -9670,9 +9633,9 @@ function PainelCorista(_ref45) {
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           case 4:
-            return _context21.a(2);
+            return _context20.a(2);
         }
-      }, _callee21);
+      }, _callee20);
     }));
     return _confirmar.apply(this, arguments);
   }
@@ -9740,7 +9703,10 @@ function PainelCorista(_ref45) {
       color: cor,
       fontWeight: 700
     }
-  }, naipe || "—"))), avisos.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, naipe || "—"))), /*#__PURE__*/React.createElement(RifaBanner, {
+    config: config,
+    isAdmin: false
+  }), avisos.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -9803,12 +9769,26 @@ function PainelCorista(_ref45) {
       day: "numeric",
       month: "long"
     })));
-  })), noticias.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  })), modalNoticiaCorista && /*#__PURE__*/React.createElement(ModalNoticia, {
+    noticia: null,
+    onClose: function onClose() {
+      return setModalNoticiaCorista(false);
+    },
+    config: config,
+    autorInicial: user.name
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
       gap: 8,
-      margin: "20px 0 12px"
+      margin: "20px 0 12px",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
     }
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "newspaper",
@@ -9822,7 +9802,29 @@ function PainelCorista(_ref45) {
       textTransform: "uppercase",
       letterSpacing: 1
     }
-  }, "Galeria do Coral")), noticias.slice(0, 3).map(function (n) {
+  }, "Galeria do Coral")), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setModalNoticiaCorista(true);
+    },
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "6px 12px",
+      background: cor,
+      color: "#fff",
+      border: "none",
+      borderRadius: 8,
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "plus",
+    size: 12,
+    color: "#fff"
+  }), " Publicar")), noticias.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, noticias.slice(0, 3).map(function (n) {
     var _n$createdAt;
     return /*#__PURE__*/React.createElement("div", {
       key: n.id,
@@ -9862,17 +9864,29 @@ function PainelCorista(_ref45) {
         color: "#555",
         lineHeight: 1.5
       }
-    }, n.texto), ((_n$createdAt = n.createdAt) === null || _n$createdAt === void 0 ? void 0 : _n$createdAt.seconds) && /*#__PURE__*/React.createElement("div", {
+    }, n.texto), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        marginTop: 6,
+        alignItems: "center"
+      }
+    }, n.autorNome && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: "#AAA",
-        marginTop: 6
+        color: cor,
+        fontWeight: 600
+      }
+    }, "\u270D\uFE0F ", n.autorNome), ((_n$createdAt = n.createdAt) === null || _n$createdAt === void 0 ? void 0 : _n$createdAt.seconds) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#AAA"
       }
     }, new Date(n.createdAt.seconds * 1000).toLocaleDateString("pt-BR", {
       day: "numeric",
       month: "long",
       year: "numeric"
-    }))));
+    })))));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -9903,7 +9917,7 @@ function PainelCorista(_ref45) {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "14px 20px",
-      borderBottom: "1px solid #F5EAEA"
+      borderBottom: "1px solid #F3EEF9"
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
@@ -9981,13 +9995,15 @@ function PainelCorista(_ref45) {
       Reunião: "#E65100",
       Gravação: "#7B1FA2"
     }[e.tipo] || "#888";
-    // Áudio do naipe
+    // Áudio do naipe — busca em todas as músicas do setlist
     var audioNaipe = e[naipeKey] || null;
-    var songNaipe = songs.find(function (s) {
-      var _e$setlist3;
-      return s.id === ((_e$setlist3 = e.setlist) === null || _e$setlist3 === void 0 || (_e$setlist3 = _e$setlist3[0]) === null || _e$setlist3 === void 0 ? void 0 : _e$setlist3.id);
-    });
-    var urlNaipe = (songNaipe === null || songNaipe === void 0 ? void 0 : songNaipe[naipeKey]) || null;
+    var urlsNaipe = (e.setlist || []).map(function (item) {
+      return songs.find(function (s) {
+        return s.id === item.id;
+      });
+    }).filter(Boolean).map(function (s) {
+      return s[naipeKey];
+    }).filter(Boolean);
     return /*#__PURE__*/React.createElement("div", {
       key: e.id,
       style: {
@@ -10097,7 +10113,7 @@ function PainelCorista(_ref45) {
         fontStyle: "italic",
         marginBottom: 8
       }
-    }, e.notes), urlNaipe && /*#__PURE__*/React.createElement("div", {
+    }, e.notes), urlsNaipe.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 8
       }
@@ -10123,31 +10139,50 @@ function PainelCorista(_ref45) {
       name: "music",
       size: 12,
       color: cor
-    }), "Estudar meu naipe (", naipe, ")", /*#__PURE__*/React.createElement(Icon, {
+    }), "Estudar meu naipe (", naipe, ") \u2014 ", urlsNaipe.length, " m\xFAsica", urlsNaipe.length !== 1 ? "s" : "", /*#__PURE__*/React.createElement(Icon, {
       name: naipeOpen === e.id ? "chevron-up" : "chevron-down",
       size: 12,
       color: cor
     })), naipeOpen === e.id && /*#__PURE__*/React.createElement("div", {
       style: {
-        marginTop: 8
+        marginTop: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
       }
-    }, /*#__PURE__*/React.createElement("iframe", {
-      src: function () {
-        var url = urlNaipe;
-        var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        if (yt) return "https://www.youtube.com/embed/".concat(yt[1], "?autoplay=1");
-        var dr = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    }, (e.setlist || []).map(function (item, idx) {
+      var song = songs.find(function (s) {
+        return s.id === item.id;
+      });
+      var urlN = song === null || song === void 0 ? void 0 : song[naipeKey];
+      if (!urlN) return null;
+      var embedUrl = function () {
+        var yt = urlN.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (yt) return "https://www.youtube.com/embed/".concat(yt[1], "?autoplay=0");
+        var dr = urlN.match(/\/d\/([a-zA-Z0-9_-]+)/);
         if (dr) return "https://drive.google.com/file/d/".concat(dr[1], "/preview");
-        return url;
-      }(),
-      style: {
-        width: "100%",
-        height: 120,
-        border: "none",
-        borderRadius: 8
-      },
-      allow: "autoplay",
-      title: "Naipe"
+        return urlN;
+      }();
+      return /*#__PURE__*/React.createElement("div", {
+        key: item.id || idx
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#888",
+          marginBottom: 4
+        }
+      }, idx + 1, ". ", item.title), /*#__PURE__*/React.createElement("iframe", {
+        src: embedUrl,
+        style: {
+          width: "100%",
+          height: 80,
+          border: "none",
+          borderRadius: 8
+        },
+        allow: "autoplay",
+        title: item.title
+      }));
     }))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -10214,18 +10249,18 @@ function MinhaDeclaracao(_ref46) {
     config = _ref46.config;
   var _useCollection23 = useCollection("frequencias", "dataHora"),
     frequencias = _useCollection23.data;
-  var _useState177 = useState(new Date().getFullYear() + "-01-01"),
-    _useState178 = _slicedToArray(_useState177, 2),
-    dataInicio = _useState178[0],
-    setDataInicio = _useState178[1];
-  var _useState179 = useState(todayStr()),
-    _useState180 = _slicedToArray(_useState179, 2),
-    dataFim = _useState180[0],
-    setDataFim = _useState180[1];
-  var _useState181 = useState({}),
+  var _useState181 = useState(new Date().getFullYear() + "-01-01"),
     _useState182 = _slicedToArray(_useState181, 2),
-    textos = _useState182[0],
-    setTextos = _useState182[1];
+    dataInicio = _useState182[0],
+    setDataInicio = _useState182[1];
+  var _useState183 = useState(todayStr()),
+    _useState184 = _slicedToArray(_useState183, 2),
+    dataFim = _useState184[0],
+    setDataFim = _useState184[1];
+  var _useState185 = useState({}),
+    _useState186 = _slicedToArray(_useState185, 2),
+    textos = _useState186[0],
+    setTextos = _useState186[1];
   var cor = config.corPrimaria || COR;
   useEffect(function () {
     db.collection("config").doc("relatorio").get().then(function (doc) {
@@ -10265,27 +10300,30 @@ function MinhaDeclaracao(_ref46) {
     letterSpacing: 0.8
   };
   function gerarPDF() {
-    if (freqCorista.length === 0) {
-      alert("Nenhuma participação registrada no período.");
-      return;
-    }
-    var nomeApp = config.nomeApp || "Flamboyant Coral";
+    var nomeApp = config.nomeApp || "Onix Brasil Vocal Internacional";
     var logoUrl = config.logoUrl || LOGO_URL;
     var cidade = textos.cidade || "Goiânia – GO";
     var maestro = textos.maestro || "Maestro";
     var produtora = textos.produtora || "Lucia Kratz";
-    var sigLucia = textos.sigLucia || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/lucia-sig.png";
-    var sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/paulo-sig.png";
+    var sigLucia = textos.sigLucia || "https://raw.githubusercontent.com/luciakratz-arch/flamb/main/lucia-sig.png";
+    var sigMaestro = textos.sigMaestro || "https://raw.githubusercontent.com/luciakratz-arch/onix-brasil/main/paulo-sig.png";
     var hoje = new Date().toLocaleDateString("pt-BR", {
       day: "numeric",
       month: "long",
       year: "numeric"
     });
     var periodoFmt = "".concat(new Date(dataInicio + "T12:00:00").toLocaleDateString("pt-BR"), " a ").concat(new Date(dataFim + "T12:00:00").toLocaleDateString("pt-BR"));
-    var linhas = freqCorista.map(function (f, i) {
+    var admissao = user.startDate ? new Date(user.startDate + "T12:00:00").toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric"
+    }) : "—";
+    var temFreq = freqCorista.length > 0;
+    var linhas = temFreq ? freqCorista.map(function (f, i) {
       return "\n            <tr><td>".concat(i + 1, "</td>\n            <td>").concat(f.eventoData ? new Date(f.eventoData + "T12:00:00").toLocaleDateString("pt-BR") : "", "</td>\n            <td>").concat(f.eventoTitulo || "—", "</td></tr>");
-    }).join("");
-    var html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\">\n<style>\n  body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:0}\n  @media print{@page{margin:2cm}}\n  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ".concat(cor, ";padding-bottom:14px;margin-bottom:20px}\n  .logo{width:54px;height:54px;object-fit:contain}\n  .titulo{text-align:center;font-size:17px;font-weight:bold;color:").concat(cor, ";text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}\n  .subtitulo{text-align:center;font-size:12px;color:#666;margin-bottom:20px}\n  .info-box{border:1px solid #EEE;border-radius:6px;padding:12px 16px;margin-bottom:16px;background:#FAFAFA}\n  .info-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px}\n  .info-lbl{font-weight:bold;color:").concat(cor, ";min-width:100px;font-size:11px;text-transform:uppercase}\n  .decl{border-left:3px solid ").concat(cor, ";padding:10px 14px;margin:16px 0;background:#FAFAFA;font-size:13px;line-height:1.7}\n  table{width:100%;border-collapse:collapse;margin-bottom:20px}\n  th{background:").concat(cor, ";color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}\n  td{padding:7px 10px;border-bottom:1px solid #EEE;font-size:12px}\n  tr:nth-child(even) td{background:#FAFAFA}\n  .assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}\n  .assin img{height:52px;object-fit:contain;display:block;margin:0 auto 6px}\n  .assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}\n  .assin-nome{font-weight:bold;font-size:12px}\n  .assin-cargo{font-size:10px;color:#888}\n  .rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}\n</style></head><body>\n<div class=\"header\">\n  <img src=\"").concat(logoUrl, "\" class=\"logo\"/>\n  <div style=\"text-align:right;font-size:11px;color:#666\"><strong>").concat(nomeApp, "</strong><br>").concat(cidade, "</div>\n</div>\n<div class=\"titulo\">Declara\xE7\xE3o de Participa\xE7\xE3o</div>\n<div class=\"subtitulo\">").concat(nomeApp, "</div>\n<div class=\"info-box\">\n  <div class=\"info-row\"><span class=\"info-lbl\">Nome:</span><span><strong>").concat(user.name, "</strong></span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Naipe:</span><span>").concat(user.voice || "—", "</span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Per\xEDodo:</span><span>").concat(periodoFmt, "</span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Participa\xE7\xF5es:</span><span>").concat(freqCorista.length, " evento").concat(freqCorista.length !== 1 ? "s" : "", "</span></div>\n</div>\n<div class=\"decl\">\n  Declaramos para os devidos fins que <strong>").concat(user.name, "</strong>").concat(user.voice ? ", " + user.voice : "", ", \n  \xE9 integrante do ").concat(nomeApp, ", participando ativamente das atividades do grupo no per\xEDodo de ").concat(periodoFmt, ",\n  com registro de presen\xE7a em <strong>").concat(freqCorista.length, " evento").concat(freqCorista.length !== 1 ? "s" : "", "</strong> conforme detalhado abaixo.\n</div>\n<table><thead><tr><th>#</th><th>Data</th><th>Evento</th></tr></thead>\n<tbody>").concat(linhas, "</tbody></table>\n<div class=\"assinaturas\">\n  <div class=\"assin\">").concat(sigMaestro ? "<img src=\"".concat(sigMaestro, "\"/>") : "<div style='height:52px'></div>", "\n    <div class=\"assin-linha\"><div class=\"assin-nome\">").concat(maestro, "</div><div class=\"assin-cargo\">Maestro \u2013 ").concat(nomeApp, "</div></div>\n  </div>\n  <div class=\"assin\">").concat(sigLucia ? "<img src=\"".concat(sigLucia, "\"/>") : "<div style='height:52px'></div>", "\n    <div class=\"assin-linha\"><div class=\"assin-nome\">").concat(produtora, "</div><div class=\"assin-cargo\">Produtora \u2013 ").concat(nomeApp, "</div></div>\n  </div>\n</div>\n<div class=\"rodape\">Documento gerado em ").concat(hoje, " pelo sistema de gest\xE3o do ").concat(nomeApp, ".</div>\n</body></html>");
+    }).join("") : "";
+    var tabelaHTML = temFreq ? "\n<table><thead><tr><th>#</th><th>Data</th><th>Evento</th></tr></thead>\n<tbody>".concat(linhas, "</tbody></table>") : "";
+    var textoDecl = temFreq ? "Declaramos para os devidos fins que <strong>".concat(user.name, "</strong>").concat(user.voice ? ", " + user.voice : "", ", \n  \xE9 integrante do ").concat(nomeApp, ", participando ativamente das atividades do grupo desde ").concat(admissao, ",\n  com registro de presen\xE7a em <strong>").concat(freqCorista.length, " evento").concat(freqCorista.length !== 1 ? "s" : "", "</strong> no per\xEDodo de ").concat(periodoFmt, ", conforme detalhado abaixo.") : "Declaramos para os devidos fins que <strong>".concat(user.name, "</strong>").concat(user.voice ? ", " + user.voice : "", ", \n  \xE9 integrante do ").concat(nomeApp, ", participando ativamente das atividades do grupo desde ").concat(admissao, ",\n  exercendo a fun\xE7\xE3o de <strong>").concat(user.funcao || "Corista", "</strong>.");
+    var html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\">\n<style>\n  body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:0}\n  @media print{@page{margin:2cm}}\n  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ".concat(cor, ";padding-bottom:14px;margin-bottom:20px}\n  .logo{width:54px;height:54px;object-fit:contain}\n  .titulo{text-align:center;font-size:17px;font-weight:bold;color:").concat(cor, ";text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}\n  .subtitulo{text-align:center;font-size:12px;color:#666;margin-bottom:20px}\n  .info-box{border:1px solid #EEE;border-radius:6px;padding:12px 16px;margin-bottom:16px;background:#FAFAFA}\n  .info-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px}\n  .info-lbl{font-weight:bold;color:").concat(cor, ";min-width:100px;font-size:11px;text-transform:uppercase}\n  .decl{border-left:3px solid ").concat(cor, ";padding:10px 14px;margin:16px 0;background:#FAFAFA;font-size:13px;line-height:1.7}\n  table{width:100%;border-collapse:collapse;margin-bottom:20px}\n  th{background:").concat(cor, ";color:#fff;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}\n  td{padding:7px 10px;border-bottom:1px solid #EEE;font-size:12px}\n  tr:nth-child(even) td{background:#FAFAFA}\n  .assinaturas{display:flex;justify-content:space-around;margin-top:48px;text-align:center}\n  .assin img{height:52px;object-fit:contain;display:block;margin:0 auto 6px}\n  .assin-linha{border-top:1px solid #333;padding-top:5px;min-width:180px}\n  .assin-nome{font-weight:bold;font-size:12px}\n  .assin-cargo{font-size:10px;color:#888}\n  .rodape{text-align:center;font-size:10px;color:#AAA;margin-top:28px;border-top:1px solid #EEE;padding-top:8px}\n</style></head><body>\n<div class=\"header\">\n  <img src=\"").concat(logoUrl, "\" class=\"logo\"/>\n  <div style=\"text-align:right;font-size:11px;color:#666\"><strong>").concat(nomeApp, "</strong><br>").concat(cidade, "</div>\n</div>\n<div class=\"titulo\">Declara\xE7\xE3o de Participa\xE7\xE3o</div>\n<div class=\"subtitulo\">").concat(nomeApp, "</div>\n<div class=\"info-box\">\n  <div class=\"info-row\"><span class=\"info-lbl\">Nome:</span><span><strong>").concat(user.name, "</strong></span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Naipe:</span><span>").concat(user.voice || "—", "</span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Membro desde:</span><span>").concat(admissao, "</span></div>\n  <div class=\"info-row\"><span class=\"info-lbl\">Per\xEDodo:</span><span>").concat(periodoFmt, "</span></div>\n  ").concat(temFreq ? "<div class=\"info-row\"><span class=\"info-lbl\">Participa\xE7\xF5es:</span><span>".concat(freqCorista.length, " evento").concat(freqCorista.length !== 1 ? "s" : "", "</span></div>") : "", "\n</div>\n<div class=\"decl\">").concat(textoDecl, "</div>\n").concat(tabelaHTML, "\n<div class=\"assinaturas\">\n  <div class=\"assin\">").concat(sigMaestro ? "<img src=\"".concat(sigMaestro, "\"/>") : "<div style='height:52px'></div>", "\n    <div class=\"assin-linha\"><div class=\"assin-nome\">").concat(maestro, "</div><div class=\"assin-cargo\">Maestro \u2013 ").concat(nomeApp, "</div></div>\n  </div>\n  <div class=\"assin\">").concat(sigLucia ? "<img src=\"".concat(sigLucia, "\"/>") : "<div style='height:52px'></div>", "\n    <div class=\"assin-linha\"><div class=\"assin-nome\">").concat(produtora, "</div><div class=\"assin-cargo\">Produtora \u2013 ").concat(nomeApp, "</div></div>\n  </div>\n</div>\n<div class=\"rodape\">Documento gerado em ").concat(hoje, " pelo sistema de gest\xE3o do ").concat(nomeApp, ".</div>\n</body></html>");
     var win = window.open("", "_blank");
     win.document.write(html);
     win.document.close();
@@ -10338,14 +10376,7 @@ function MinhaDeclaracao(_ref46) {
     onChange: function onChange(e) {
       return setDataFim(e.target.value);
     }
-  }))), freqCorista.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: "#CCC",
-      textAlign: "center",
-      padding: "20px 0"
-    }
-  }, "Nenhuma participa\xE7\xE3o registrada no per\xEDodo.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }))), freqCorista.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -10379,7 +10410,14 @@ function MinhaDeclaracao(_ref46) {
         flex: 1
       }
     }, f.eventoTitulo));
-  })), /*#__PURE__*/React.createElement("button", {
+  })), freqCorista.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#888",
+      padding: "8px 0 12px",
+      fontStyle: "italic"
+    }
+  }, "Nenhuma participa\xE7\xE3o no per\xEDodo \u2014 a declara\xE7\xE3o ser\xE1 gerada com seus dados de v\xEDnculo."), /*#__PURE__*/React.createElement("button", {
     onClick: gerarPDF,
     style: {
       display: "flex",
@@ -10399,7 +10437,7 @@ function MinhaDeclaracao(_ref46) {
     name: "printer",
     size: 14,
     color: "#fff"
-  }), " Gerar Declara\xE7\xE3o PDF"))));
+  }), " Gerar Declara\xE7\xE3o PDF")));
 }
 
 // ── NOTÍCIAS / BLOG ───────────────────────────────────────────────────────────
@@ -10414,40 +10452,40 @@ function ModalNoticia(_ref47) {
     imageUrl: "",
     categoria: "Geral"
   };
-  var _useState183 = useState(noticia ? _objectSpread(_objectSpread({}, vazio), noticia) : vazio),
-    _useState184 = _slicedToArray(_useState183, 2),
-    form = _useState184[0],
-    setForm = _useState184[1];
-  var _useState185 = useState(false),
-    _useState186 = _slicedToArray(_useState185, 2),
-    salvando = _useState186[0],
-    setSalvando = _useState186[1];
-  var _useState187 = useState(""),
+  var _useState187 = useState(noticia ? _objectSpread(_objectSpread({}, vazio), noticia) : vazio),
     _useState188 = _slicedToArray(_useState187, 2),
-    erro = _useState188[0],
-    setErro = _useState188[1];
+    form = _useState188[0],
+    setForm = _useState188[1];
+  var _useState189 = useState(false),
+    _useState190 = _slicedToArray(_useState189, 2),
+    salvando = _useState190[0],
+    setSalvando = _useState190[1];
+  var _useState191 = useState(""),
+    _useState192 = _slicedToArray(_useState191, 2),
+    erro = _useState192[0],
+    setErro = _useState192[1];
   function salvar() {
     return _salvar7.apply(this, arguments);
   }
   function _salvar7() {
-    _salvar7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
+    _salvar7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21() {
       var d;
-      return _regenerator().w(function (_context22) {
-        while (1) switch (_context22.n) {
+      return _regenerator().w(function (_context21) {
+        while (1) switch (_context21.n) {
           case 0:
             if (form.titulo.trim()) {
-              _context22.n = 1;
+              _context21.n = 1;
               break;
             }
             setErro("Título é obrigatório.");
-            return _context22.a(2);
+            return _context21.a(2);
           case 1:
             if (form.texto.trim()) {
-              _context22.n = 2;
+              _context21.n = 2;
               break;
             }
             setErro("Texto é obrigatório.");
-            return _context22.a(2);
+            return _context21.a(2);
           case 2:
             setSalvando(true);
             d = {
@@ -10458,26 +10496,26 @@ function ModalNoticia(_ref47) {
               createdAt: noticia ? noticia.createdAt : firebase.firestore.FieldValue.serverTimestamp()
             };
             if (!noticia) {
-              _context22.n = 4;
+              _context21.n = 4;
               break;
             }
-            _context22.n = 3;
+            _context21.n = 3;
             return db.collection("noticias").doc(noticia.id).update(_objectSpread(_objectSpread({}, d), {}, {
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }));
           case 3:
-            _context22.n = 5;
+            _context21.n = 5;
             break;
           case 4:
-            _context22.n = 5;
+            _context21.n = 5;
             return db.collection("noticias").add(d);
           case 5:
             setSalvando(false);
             onClose();
           case 6:
-            return _context22.a(2);
+            return _context21.a(2);
         }
-      }, _callee22);
+      }, _callee21);
     }));
     return _salvar7.apply(this, arguments);
   }
@@ -10485,24 +10523,24 @@ function ModalNoticia(_ref47) {
     return _excluir6.apply(this, arguments);
   }
   function _excluir6() {
-    _excluir6 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee23() {
-      return _regenerator().w(function (_context23) {
-        while (1) switch (_context23.n) {
+    _excluir6 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
+      return _regenerator().w(function (_context22) {
+        while (1) switch (_context22.n) {
           case 0:
             if (window.confirm("Excluir esta notícia?")) {
-              _context23.n = 1;
+              _context22.n = 1;
               break;
             }
-            return _context23.a(2);
+            return _context22.a(2);
           case 1:
-            _context23.n = 2;
+            _context22.n = 2;
             return db.collection("noticias").doc(noticia.id).delete();
           case 2:
             onClose();
           case 3:
-            return _context23.a(2);
+            return _context22.a(2);
         }
-      }, _callee23);
+      }, _callee22);
     }));
     return _excluir6.apply(this, arguments);
   }
@@ -10724,21 +10762,21 @@ function AreaRH(_ref48) {
     noticias = _useCollection27.data;
   var _useCollection28 = useCollection("relatorios_historico"),
     relatorios = _useCollection28.data;
-  var _useState189 = useState(abaInicial || "dashboard"),
-    _useState190 = _slicedToArray(_useState189, 2),
-    aba = _useState190[0],
-    setAba = _useState190[1];
+  var _useState193 = useState(abaInicial || "dashboard"),
+    _useState194 = _slicedToArray(_useState193, 2),
+    aba = _useState194[0],
+    setAba = _useState194[1];
   useEffect(function () {
     if (abaInicial) setAba(abaInicial);
   }, [abaInicial]);
-  var _useState191 = useState(null),
-    _useState192 = _slicedToArray(_useState191, 2),
-    modalNoticia = _useState192[0],
-    setModalNoticia = _useState192[1];
-  var _useState193 = useState({}),
-    _useState194 = _slicedToArray(_useState193, 2),
-    textos = _useState194[0],
-    setTextos = _useState194[1];
+  var _useState195 = useState(null),
+    _useState196 = _slicedToArray(_useState195, 2),
+    modalNoticia = _useState196[0],
+    setModalNoticia = _useState196[1];
+  var _useState197 = useState({}),
+    _useState198 = _slicedToArray(_useState197, 2),
+    textos = _useState198[0],
+    setTextos = _useState198[1];
   var cor = config.corPrimaria || COR;
   var today = todayStr();
   useEffect(function () {
@@ -10797,10 +10835,10 @@ function AreaRH(_ref48) {
   })).concat([1]));
 
   // Confirmações
-  var _useState195 = useState([]),
-    _useState196 = _slicedToArray(_useState195, 2),
-    confirmacoes = _useState196[0],
-    setConfirmacoes = _useState196[1];
+  var _useState199 = useState([]),
+    _useState200 = _slicedToArray(_useState199, 2),
+    confirmacoes = _useState200[0],
+    setConfirmacoes = _useState200[1];
   useEffect(function () {
     db.collection("confirmacoes").onSnapshot(function (snap) {
       return setConfirmacoes(snap.docs.map(function (d) {
@@ -10843,18 +10881,18 @@ function AreaRH(_ref48) {
   }];
 
   // ── DECLARAÇÕES POR CORISTA ──
-  var _useState197 = useState(""),
-    _useState198 = _slicedToArray(_useState197, 2),
-    coristaDecl = _useState198[0],
-    setCoristaDecl = _useState198[1];
-  var _useState199 = useState(new Date().getFullYear() + "-01-01"),
-    _useState200 = _slicedToArray(_useState199, 2),
-    dataInicio = _useState200[0],
-    setDataInicio = _useState200[1];
-  var _useState201 = useState(todayStr()),
+  var _useState201 = useState(""),
     _useState202 = _slicedToArray(_useState201, 2),
-    dataFim = _useState202[0],
-    setDataFim = _useState202[1];
+    coristaDecl = _useState202[0],
+    setCoristaDecl = _useState202[1];
+  var _useState203 = useState(new Date().getFullYear() + "-01-01"),
+    _useState204 = _slicedToArray(_useState203, 2),
+    dataInicio = _useState204[0],
+    setDataInicio = _useState204[1];
+  var _useState205 = useState(todayStr()),
+    _useState206 = _slicedToArray(_useState205, 2),
+    dataFim = _useState206[0],
+    setDataFim = _useState206[1];
   var coristaAtual = members.find(function (m) {
     return m.id === coristaDecl;
   });
@@ -11575,24 +11613,24 @@ var NAV_CORISTA = [{
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 function App() {
-  var _useState203 = useState(function () {
+  var _useState207 = useState(function () {
       try {
         return JSON.parse(localStorage.getItem("cf_user"));
       } catch (_unused) {
         return null;
       }
     }),
-    _useState204 = _slicedToArray(_useState203, 2),
-    user = _useState204[0],
-    setUser = _useState204[1];
-  var _useState205 = useState([]),
-    _useState206 = _slicedToArray(_useState205, 2),
-    members = _useState206[0],
-    setMembers = _useState206[1];
-  var _useState207 = useState("painel"),
     _useState208 = _slicedToArray(_useState207, 2),
-    tab = _useState208[0],
-    setTab = _useState208[1];
+    user = _useState208[0],
+    setUser = _useState208[1];
+  var _useState209 = useState([]),
+    _useState210 = _slicedToArray(_useState209, 2),
+    members = _useState210[0],
+    setMembers = _useState210[1];
+  var _useState211 = useState("painel"),
+    _useState212 = _slicedToArray(_useState211, 2),
+    tab = _useState212[0],
+    setTab = _useState212[1];
   var _useConfig = useConfig(),
     config = _useConfig.config,
     save = _useConfig.save;
