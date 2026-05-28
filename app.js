@@ -4595,10 +4595,10 @@ function Avisos(_ref14) {
       onClick: function onClick() {
         return db.collection("avisos").doc(a.id).update({ oculto: !a.oculto });
       },
-      title: a.oculto ? "Mostrar para coristas" : "Ocultar para coristas",
+      title: a.oculto ? "Mostrar para coristas" : "Ocultar para coristas", "data-show": "true",
       style: {
-        background: a.oculto ? "#FFF3CD" : "none",
-        border: a.oculto ? "1px solid #F59E0B" : "none",
+        background: a.oculto ? "#FFF3CD" : "#F3F4F6",
+        border: a.oculto ? "1px solid #F59E0B" : "1px solid #D1D5DB",
         borderRadius: 6,
         cursor: "pointer",
         display: "flex",
@@ -4606,13 +4606,13 @@ function Avisos(_ref14) {
         padding: "2px 6px",
         gap: 4,
         fontSize: 10,
-        color: a.oculto ? "#B45309" : "#AAA",
+        color: a.oculto ? "#B45309" : "#555",
         fontFamily: "inherit"
       }
     }, /*#__PURE__*/React.createElement(Icon, {
       name: a.oculto ? "eye" : "eye-off",
       size: 14,
-      color: a.oculto ? "#F59E0B" : "#CCC"
+      color: a.oculto ? "#F59E0B" : "#555"
     }), a.oculto ? "Oculto" : ""))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 14,
