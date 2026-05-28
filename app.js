@@ -4613,7 +4613,7 @@ function Avisos(_ref14) {
       name: a.oculto ? "eye" : "eye-off",
       size: 14,
       color: a.oculto ? "#F59E0B" : "#555"
-    }), a.oculto ? "Oculto" : ""))), /*#__PURE__*/React.createElement("div", {
+    }), a.oculto ? "✓ Oculto" : "👁 Ocultar"))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 14,
         color: "#555",
