@@ -9703,10 +9703,7 @@ function PainelCorista(_ref45) {
       color: cor,
       fontWeight: 700
     }
-  }, naipe || "—"))), /*#__PURE__*/React.createElement(RifaBanner, {
-    config: config,
-    isAdmin: false
-  }), avisos.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, naipe || "—"))), avisos.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
