@@ -1859,7 +1859,7 @@ function Painel(_ref8) {
       fontWeight: 700,
       color: "#1A1D23"
     }
-  }, "Avisos Recentes")), avisos.slice(0, 3).map(function (a) {
+  }, "Avisos Recentes")), avisos.filter(function(a) { return !a.oculto; }).slice(0, 3).map(function (a) {
     var _a$createdAt;
     return /*#__PURE__*/React.createElement("div", {
       key: a.id,
@@ -4595,25 +4595,18 @@ function Avisos(_ref14) {
       onClick: function onClick() {
         return db.collection("avisos").doc(a.id).update({ oculto: !a.oculto });
       },
-      title: a.oculto ? "Mostrar para coristas" : "Ocultar para coristas", "data-show": "true",
       style: {
         background: a.oculto ? "#FFF3CD" : "#F3F4F6",
         border: a.oculto ? "1px solid #F59E0B" : "1px solid #D1D5DB",
         borderRadius: 6,
         cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        padding: "2px 6px",
-        gap: 4,
-        fontSize: 10,
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
         color: a.oculto ? "#B45309" : "#555",
         fontFamily: "inherit"
       }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: a.oculto ? "eye" : "eye-off",
-      size: 14,
-      color: a.oculto ? "#F59E0B" : "#555"
-    }), a.oculto ? "✓ Oculto" : "👁 Ocultar"))), /*#__PURE__*/React.createElement("div", {
+    }, a.oculto ? "Mostrar" : "Ocultar"))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 14,
         color: "#555",
@@ -9744,7 +9737,7 @@ function PainelCorista(_ref45) {
       textTransform: "uppercase",
       letterSpacing: 1
     }
-  }, "Avisos")), avisos.slice(0, 4).map(function (a) {
+  }, "Avisos")), avisos.filter(function(a) { return !a.oculto; }).slice(0, 4).map(function (a) {
     var _a$createdAt3;
     var isAuto = a.tipo && a.tipo !== "manual";
     var bc = isAuto ? "#F59E0B" : prioColor[a.prioridade] || cor;
