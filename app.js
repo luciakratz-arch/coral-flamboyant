@@ -4495,7 +4495,7 @@ function Avisos(_ref14) {
       color: "#CCC",
       fontSize: 14
     }
-  }, "Nenhum aviso publicado."), avisos.map(function (a) {
+  }, "Nenhum aviso publicado."), avisos.filter(function(a) { return isAdmin || !a.oculto; }).map(function (a) {
     var _a$createdAt2;
     var isAuto = a.tipo && a.tipo !== "manual";
     var borderColor = isAuto ? "#F59E0B" : prioColor[a.prioridade] || cor;
@@ -4591,7 +4591,29 @@ function Avisos(_ref14) {
       name: "trash-2",
       size: 14,
       color: "#CCC"
-    })))), /*#__PURE__*/React.createElement("div", {
+    })), isAdmin && /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return db.collection("avisos").doc(a.id).update({ oculto: !a.oculto });
+      },
+      title: a.oculto ? "Mostrar para coristas" : "Ocultar para coristas",
+      style: {
+        background: a.oculto ? "#FFF3CD" : "none",
+        border: a.oculto ? "1px solid #F59E0B" : "none",
+        borderRadius: 6,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        padding: "2px 6px",
+        gap: 4,
+        fontSize: 10,
+        color: a.oculto ? "#B45309" : "#AAA",
+        fontFamily: "inherit"
+      }
+    }, /*#__PURE__*/React.createElement(Icon, {
+      name: a.oculto ? "eye" : "eye-off",
+      size: 14,
+      color: a.oculto ? "#F59E0B" : "#CCC"
+    }), a.oculto ? "Oculto" : ""))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 14,
         color: "#555",
