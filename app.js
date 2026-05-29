@@ -4580,18 +4580,17 @@ function Avisos(_ref14) {
         return excluir(a.id);
       },
       style: {
-        background: "none",
-        border: "none",
+        background: "#FEE2E2",
+        border: "1px solid #FECACA",
+        borderRadius: 6,
         cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        padding: 2
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
+        color: "#DC2626",
+        fontFamily: "inherit"
       }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "trash-2",
-      size: 14,
-      color: "#CCC"
-    })), isAdmin && /*#__PURE__*/React.createElement("button", {
+    }, "Excluir"), isAdmin && /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         return db.collection("avisos").doc(a.id).update({ oculto: !a.oculto });
       },
