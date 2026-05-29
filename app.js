@@ -4564,18 +4564,17 @@ function Avisos(_ref14) {
         return setEditAviso(a);
       },
       style: {
-        background: "none",
-        border: "none",
+        background: "#EFF6FF",
+        border: "1px solid #BFDBFE",
+        borderRadius: 6,
         cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        padding: 2
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
+        color: "#1D4ED8",
+        fontFamily: "inherit"
       }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "pencil",
-      size: 14,
-      color: "#AAA"
-    })), isAdmin && /*#__PURE__*/React.createElement("button", {
+    }, "Editar"), isAdmin && /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         return excluir(a.id);
       },
