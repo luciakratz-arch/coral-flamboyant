@@ -5413,7 +5413,7 @@ function Repertorio(_ref16) {
       gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
       gap: 14
     }
-  }, filtradas.map(function (s) {
+  }, filtradas.slice().sort(function(a,b){ return (a.title||"").localeCompare(b.title||"","pt"); }).map(function (s) {
     var catColor = CAT_COLORS[s.categoria] || "#616161";
     return /*#__PURE__*/React.createElement("div", {
       key: s.id,
