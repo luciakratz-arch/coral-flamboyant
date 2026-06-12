@@ -9652,6 +9652,65 @@ function PainelCorista(_ref45) {
     }));
     return _confirmar.apply(this, arguments);
   }
+
+  // Estado: quais eventos já tiveram presença registrada
+  var _useState_presenca = useState({}),
+    _useState_presenca2 = _slicedToArray(_useState_presenca, 2),
+    presencaRegistrada = _useState_presenca2[0],
+    setPresencaRegistrada = _useState_presenca2[1];
+
+  // Carrega frequências já registradas do corista
+  useEffect(function () {
+    if (!user.name) return;
+    db.collection("frequencias").where("membroNome", "==", user.name).onSnapshot(function (snap) {
+      var m = {};
+      snap.docs.forEach(function (d) {
+        m[d.data().eventoId] = true;
+      });
+      setPresencaRegistrada(m);
+    });
+  }, [user.name]);
+
+  function registrarPresenca(_x_ev) {
+    return _registrarPresenca.apply(this, arguments);
+  }
+  function _registrarPresenca() {
+    _registrarPresenca = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee_presenca(evento) {
+      var snap;
+      return _regenerator().w(function (_context_presenca) {
+        while (1) switch (_context_presenca.n) {
+          case 0:
+            _context_presenca.n = 1;
+            return db.collection("frequencias")
+              .where("membroNome", "==", user.name)
+              .where("eventoId", "==", evento.id)
+              .get();
+          case 1:
+            snap = _context_presenca.v;
+            if (!snap.empty) {
+              _context_presenca.n = 3;
+              break;
+            }
+            _context_presenca.n = 2;
+            return db.collection("frequencias").add({
+              membroNome: user.name,
+              eventoId: evento.id,
+              eventoTitulo: evento.title || evento.tipo || "",
+              eventoData: evento.date || "",
+              dataHora: firebase.firestore.FieldValue.serverTimestamp(),
+              via: "calendario"
+            });
+          case 2:
+            _context_presenca.n = 3;
+            break;
+          case 3:
+            return _context_presenca.a(2);
+        }
+      }, _callee_presenca);
+    }));
+    return _registrarPresenca.apply(this, arguments);
+  }
+
   function navMes(dir) {
     var nm = mes + dir,
       na = ano;
@@ -10193,63 +10252,117 @@ function PainelCorista(_ref45) {
         allow: "autoplay",
         title: item.title
       }));
-    }))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap"
+    }))), /*#__PURE__*/React.createElement(React.Fragment, null, (function() {
+      // Lógica do botão de presença: mostra se o evento é hoje e dentro da janela horária
+      var hoje = todayStr();
+      var eHoje = e.date === hoje;
+      var jaRegistrou = !!presencaRegistrada[e.id];
+      var dentroJanela = false;
+      if (eHoje) {
+        var agora = new Date();
+        var horaAtual = agora.getHours() * 60 + agora.getMinutes();
+        // Pega horário do evento (formato "HH:MM") ou usa padrão 17:00
+        var horaEvStr = e.hora || e.chegada || "17:00";
+        var horaEvParts = horaEvStr.replace("Chegada: ", "").split(":");
+        var horaEvMin = parseInt(horaEvParts[0] || 17) * 60 + parseInt(horaEvParts[1] || 0);
+        // Janela: 1 hora antes até 3 horas depois
+        dentroJanela = horaAtual >= (horaEvMin - 60) && horaAtual <= (horaEvMin + 180);
       }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: "#AAA"
-      }
-    }, "Sua presen\xE7a:"), /*#__PURE__*/React.createElement("button", {
-      onClick: function onClick() {
-        return confirmar(e.id, "vou");
-      },
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "5px 12px",
-        borderRadius: 20,
-        border: "1px solid ".concat(conf === "vou" ? "#2E7D32" : "#EEE"),
-        background: conf === "vou" ? "#E8F5E9" : "#fff",
-        color: conf === "vou" ? "#2E7D32" : "#888",
-        fontSize: 12,
-        fontWeight: 600,
-        cursor: "pointer",
-        fontFamily: "inherit"
-      }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "check-circle",
-      size: 13,
-      color: conf === "vou" ? "#2E7D32" : "#CCC"
-    }), " Vou participar"), /*#__PURE__*/React.createElement("button", {
-      onClick: function onClick() {
-        return confirmar(e.id, "nao");
-      },
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "5px 12px",
-        borderRadius: 20,
-        border: "1px solid ".concat(conf === "nao" ? cor : "#EEE"),
-        background: conf === "nao" ? "#FFF5F5" : "#fff",
-        color: conf === "nao" ? cor : "#888",
-        fontSize: 12,
-        fontWeight: 600,
-        cursor: "pointer",
-        fontFamily: "inherit"
-      }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      name: "x-circle",
-      size: 13,
-      color: conf === "nao" ? cor : "#CCC"
-    }), " N\xE3o vou"))));
+      return /*#__PURE__*/React.createElement(React.Fragment, null,
+        eHoje && dentroJanela && /*#__PURE__*/React.createElement("div", {
+          style: { marginTop: 10 }
+        }, jaRegistrou
+          ? /*#__PURE__*/React.createElement("div", {
+              style: {
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 20,
+                background: "#E8F5E9",
+                border: "1px solid #2E7D32",
+                color: "#2E7D32",
+                fontSize: 13,
+                fontWeight: 700
+              }
+            }, /*#__PURE__*/React.createElement(Icon, { name: "check-circle", size: 15, color: "#2E7D32" }), " Presen\xE7a registrada!")
+          : /*#__PURE__*/React.createElement("button", {
+              onClick: function onClick() { return registrarPresenca(e); },
+              style: {
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 20,
+                background: cor,
+                border: "none",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)"
+              }
+            }, /*#__PURE__*/React.createElement(Icon, { name: "user-check", size: 15, color: "#fff" }), " Registrar minha presen\xE7a")),
+        /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginTop: eHoje && dentroJanela ? 8 : 0
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 12,
+            color: "#AAA"
+          }
+        }, "Sua presen\xE7a:"), /*#__PURE__*/React.createElement("button", {
+          onClick: function onClick() {
+            return confirmar(e.id, "vou");
+          },
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "5px 12px",
+            borderRadius: 20,
+            border: "1px solid ".concat(conf === "vou" ? "#2E7D32" : "#EEE"),
+            background: conf === "vou" ? "#E8F5E9" : "#fff",
+            color: conf === "vou" ? "#2E7D32" : "#888",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: "inherit"
+          }
+        }, /*#__PURE__*/React.createElement(Icon, {
+          name: "check-circle",
+          size: 13,
+          color: conf === "vou" ? "#2E7D32" : "#CCC"
+        }), " Vou participar"), /*#__PURE__*/React.createElement("button", {
+          onClick: function onClick() {
+            return confirmar(e.id, "nao");
+          },
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "5px 12px",
+            borderRadius: 20,
+            border: "1px solid ".concat(conf === "nao" ? cor : "#EEE"),
+            background: conf === "nao" ? "#FFF5F5" : "#fff",
+            color: conf === "nao" ? cor : "#888",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: "inherit"
+          }
+        }, /*#__PURE__*/React.createElement(Icon, {
+          name: "x-circle",
+          size: 13,
+          color: conf === "nao" ? cor : "#CCC"
+        }), " N\xE3o vou")));
+    })()));
   }))));
 }
 
