@@ -10252,8 +10252,8 @@ function PainelCorista(_ref45) {
         allow: "autoplay",
         title: item.title
       }));
-    }))), /*#__PURE__*/React.createElement(React.Fragment, null, (function() {
-      // Lógica do botão de presença: mostra se o evento é hoje e dentro da janela horária
+    }))), /*#__PURE__*/React.createElement(React.Fragment, null,
+      (function() {
       var hoje = todayStr();
       var eHoje = e.date === hoje;
       var jaRegistrou = !!presencaRegistrada[e.id];
@@ -10261,11 +10261,9 @@ function PainelCorista(_ref45) {
       if (eHoje) {
         var agora = new Date();
         var horaAtual = agora.getHours() * 60 + agora.getMinutes();
-        // Pega horário do evento (formato "HH:MM") ou usa padrão 17:00
         var horaEvStr = e.hora || e.chegada || "17:00";
         var horaEvParts = horaEvStr.replace("Chegada: ", "").split(":");
         var horaEvMin = parseInt(horaEvParts[0] || 17) * 60 + parseInt(horaEvParts[1] || 0);
-        // Janela: 1 hora antes até 3 horas depois
         dentroJanela = horaAtual >= (horaEvMin - 60) && horaAtual <= (horaEvMin + 180);
       }
       return /*#__PURE__*/React.createElement(React.Fragment, null,
@@ -10362,7 +10360,7 @@ function PainelCorista(_ref45) {
           size: 13,
           color: conf === "nao" ? cor : "#CCC"
         }), " N\xE3o vou")));
-    })()));
+    })())));
   }))));
 }
 
