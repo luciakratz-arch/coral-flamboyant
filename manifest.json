@@ -9,7 +9,7 @@
   "theme_color": "#7B1020",
   "orientation": "portrait",
   "icons": [
-    { "src": "logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "unnamed.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "unnamed.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
