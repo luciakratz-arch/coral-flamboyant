@@ -15,7 +15,9 @@
     <script>
       if('serviceWorker' in navigator){
         window.addEventListener('load',function(){
-          navigator.serviceWorker.register('./sw.js').catch(function(){});
+          navigator.serviceWorker.register('./sw.js')
+            .then(function(r){console.log('[SW] registrado',r.scope);})
+            .catch(function(e){console.log('[SW] erro',e);});
         });
       }
     </script>
@@ -31,7 +33,7 @@
     <div id="root"></div>
     <script src="app.js?v=3"></script>
 
-    <!-- Modal PWA - primeira visita -->
+    <!-- Modal PWA -->
     <div id="modal-pwa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);">
       <div style="background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 40px;width:100%;max-width:500px;box-shadow:0 -4px 32px rgba(0,0,0,0.2);">
         <div style="width:40px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px;"></div>
@@ -42,36 +44,29 @@
             <div style="font-size:13px;color:#666;margin-top:2px;">Instalar app no seu celular?</div>
           </div>
         </div>
-        <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:20px;">
-          Adicione à sua tela inicial para acessar rapidamente, mesmo sem internet!
-        </p>
-        <button id="btn-instalar-pwa" onclick="instalarPWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#7B1020;color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-bottom:10px;font-family:Inter,sans-serif;">
-          📲 Instalar App
-        </button>
-        <button onclick="fecharModalPWA()" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#666;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;">
-          Agora não
-        </button>
-        <!-- iOS instructions -->
-        <div id="ios-pwa" style="display:none;margin-top:16px;background:#f8f8f8;border-radius:10px;padding:14px;">
-          <p style="font-size:13px;color:#333;margin-bottom:8px;font-weight:600;">📱 No iPhone / iPad:</p>
-          <p style="font-size:13px;color:#555;line-height:1.6;">1. Toque em <strong>Compartilhar ⬆️</strong> na barra do Safari<br>2. Toque em <strong>"Adicionar à Tela de Início"</strong><br>3. Toque em <strong>Adicionar</strong></p>
-          <p style="font-size:11px;color:#999;margin-top:8px;">⚠️ Use o Safari, não o Chrome.</p>
+        <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:20px;">Adicione à sua tela inicial para acessar rapidamente, mesmo sem internet!</p>
+        <div id="pwa-android">
+          <button onclick="instalarPWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#7B1020;color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-bottom:10px;font-family:Inter,sans-serif;">📲 Instalar App</button>
         </div>
+        <div id="pwa-ios" style="display:none;background:#f8f8f8;border-radius:10px;padding:14px;margin-bottom:10px;">
+          <p style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;">📱 No iPhone / iPad:</p>
+          <p style="font-size:13px;color:#555;line-height:1.8;">1. Toque em <strong>Compartilhar ⬆️</strong> na barra do Safari<br>2. Toque em <strong>"Adicionar à Tela de Início"</strong><br>3. Toque em <strong>Adicionar</strong></p>
+          <p style="font-size:11px;color:#f59e0b;margin-top:6px;">⚠️ Deve estar no Safari, não no Chrome.</p>
+        </div>
+        <button onclick="fecharModalPWA()" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#666;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;">Agora não</button>
       </div>
     </div>
 
     <script>
     (function(){
-      var COR = "#7B1020";
-      var COR_RGBA = "rgba(123,16,32,0.9)";
       var deferredPrompt = null;
       var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
       var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
-      // Captura o evento de instalação
       window.addEventListener('beforeinstallprompt', function(e){
         e.preventDefault();
         deferredPrompt = e;
+        console.log('[PWA] beforeinstallprompt capturado');
       });
 
       window.addEventListener('appinstalled', function(){
@@ -79,14 +74,18 @@
         fecharModalPWA();
       });
 
-      // Mostra modal na primeira visita (só 1 vez)
       window.addEventListener('load', function(){
-        if(isStandalone) return; // já está instalado
+        if(isStandalone) return;
         var jaViu = localStorage.getItem('pwa_aviso_flamboyant');
         if(jaViu) return;
+        // iOS: mostra instruções
+        if(isIOS){
+          document.getElementById('pwa-android').style.display='none';
+          document.getElementById('pwa-ios').style.display='block';
+        }
         setTimeout(function(){
           var el = document.getElementById('modal-pwa');
-          if(el) el.style.display = 'flex';
+          if(el) el.style.display='flex';
         }, 1500);
       });
 
@@ -94,21 +93,20 @@
         if(deferredPrompt){
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then(function(r){
-            if(r.outcome === 'accepted') deferredPrompt = null;
+            deferredPrompt = null;
             fecharModalPWA();
           });
-        } else if(isIOS){
-          document.getElementById('btn-instalar-pwa').style.display = 'none';
-          document.getElementById('ios-pwa').style.display = 'block';
         } else {
+          // Fallback: recarrega forçando o navegador a tentar novamente
           fecharModalPWA();
+          window.location.reload();
         }
       };
 
       window.fecharModalPWA = function(){
         localStorage.setItem('pwa_aviso_flamboyant', '1');
         var el = document.getElementById('modal-pwa');
-        if(el) el.style.display = 'none';
+        if(el) el.style.display='none';
       };
     })();
     </script>
@@ -121,12 +119,12 @@
       window.fazerBackupCoral=function(){
         var btn=document.getElementById("btnBackupCoral");
         if(btn){btn.disabled=true;btn.textContent="⏳ Gerando...";}
-        var bk={geradoEm:new Date().toLocaleString("pt-BR"),coral:"Coral Flamboyant",colecoes:{}};
+        var bk={geradoEm:new Date().toLocaleString("pt-BR"),colecoes:{}};
         Promise.all(COLS.map(function(c){
           return db.collection(c).get().then(function(snap){
             var docs={};snap.forEach(function(d){docs[d.id]=d.data();});
             bk.colecoes[c]=docs;
-          }).catch(function(){bk.colecoes[c]={_erro:"não foi possível ler"};});
+          }).catch(function(){bk.colecoes[c]={_erro:"erro"};}); 
         })).then(function(){
           var blob=new Blob([JSON.stringify(bk,null,2)],{type:"application/json"});
           var url=URL.createObjectURL(blob);
@@ -138,8 +136,8 @@
         });
       };
       var b=document.createElement("button");
-      b.id="btnBackupCoral";b.textContent="💾 Backup";b.title="Baixar backup de todos os dados";
-      b.style.cssText="position:fixed;bottom:12px;right:12px;z-index:9999;background:rgba(123,16,32,0.9);color:#fff;border:none;border-radius:18px;padding:7px 14px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);opacity:0.85;";
+      b.id="btnBackupCoral";b.textContent="💾 Backup";
+      b.style.cssText="position:fixed;bottom:12px;right:12px;z-index:9999;background:#7B1020;color:#fff;border:none;border-radius:18px;padding:7px 14px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);opacity:0.85;";
       b.onclick=window.fazerBackupCoral;
       document.body.appendChild(b);
     })();
