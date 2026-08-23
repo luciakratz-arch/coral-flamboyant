@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
     <title>Coral Flamboyant | Gestão Profissional</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7B1020">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Coral Flamboyant">
+    <link rel="apple-touch-icon" href="logo.png">
+    <script>
+      if('serviceWorker' in navigator){
+        window.addEventListener('load',function(){
+          navigator.serviceWorker.register('./sw.js').catch(function(){});
+        });
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -16,8 +30,91 @@
 <body>
     <div id="root"></div>
     <script src="app.js?v=3"></script>
+
+    <!-- Modal PWA - primeira visita -->
+    <div id="modal-pwa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);">
+      <div style="background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 40px;width:100%;max-width:500px;box-shadow:0 -4px 32px rgba(0,0,0,0.2);">
+        <div style="width:40px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px;"></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+          <img src="logo.png" style="width:56px;height:56px;border-radius:12px;object-fit:cover;" onerror="this.style.display='none'">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#111;">Coral Flamboyant</div>
+            <div style="font-size:13px;color:#666;margin-top:2px;">Instalar app no seu celular?</div>
+          </div>
+        </div>
+        <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:20px;">
+          Adicione à sua tela inicial para acessar rapidamente, mesmo sem internet!
+        </p>
+        <button id="btn-instalar-pwa" onclick="instalarPWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#7B1020;color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-bottom:10px;font-family:Inter,sans-serif;">
+          📲 Instalar App
+        </button>
+        <button onclick="fecharModalPWA()" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#666;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;">
+          Agora não
+        </button>
+        <!-- iOS instructions -->
+        <div id="ios-pwa" style="display:none;margin-top:16px;background:#f8f8f8;border-radius:10px;padding:14px;">
+          <p style="font-size:13px;color:#333;margin-bottom:8px;font-weight:600;">📱 No iPhone / iPad:</p>
+          <p style="font-size:13px;color:#555;line-height:1.6;">1. Toque em <strong>Compartilhar ⬆️</strong> na barra do Safari<br>2. Toque em <strong>"Adicionar à Tela de Início"</strong><br>3. Toque em <strong>Adicionar</strong></p>
+          <p style="font-size:11px;color:#999;margin-top:8px;">⚠️ Use o Safari, não o Chrome.</p>
+        </div>
+      </div>
+    </div>
+
     <script>
-    // ===== Backup dos dados (Firestore) =====
+    (function(){
+      var COR = "#7B1020";
+      var COR_RGBA = "rgba(123,16,32,0.9)";
+      var deferredPrompt = null;
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+      // Captura o evento de instalação
+      window.addEventListener('beforeinstallprompt', function(e){
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+
+      window.addEventListener('appinstalled', function(){
+        deferredPrompt = null;
+        fecharModalPWA();
+      });
+
+      // Mostra modal na primeira visita (só 1 vez)
+      window.addEventListener('load', function(){
+        if(isStandalone) return; // já está instalado
+        var jaViu = localStorage.getItem('pwa_aviso_flamboyant');
+        if(jaViu) return;
+        setTimeout(function(){
+          var el = document.getElementById('modal-pwa');
+          if(el) el.style.display = 'flex';
+        }, 1500);
+      });
+
+      window.instalarPWA = function(){
+        if(deferredPrompt){
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(r){
+            if(r.outcome === 'accepted') deferredPrompt = null;
+            fecharModalPWA();
+          });
+        } else if(isIOS){
+          document.getElementById('btn-instalar-pwa').style.display = 'none';
+          document.getElementById('ios-pwa').style.display = 'block';
+        } else {
+          fecharModalPWA();
+        }
+      };
+
+      window.fecharModalPWA = function(){
+        localStorage.setItem('pwa_aviso_flamboyant', '1');
+        var el = document.getElementById('modal-pwa');
+        if(el) el.style.display = 'none';
+      };
+    })();
+    </script>
+
+    <!-- Backup Firestore -->
+    <script>
     (function(){
       var COLS=["acessos","avisos","config","confirmacoes","estudos","events","frequencias","members","noticias","relatorios_historico","sessoes_checkin","songs"];
       function p2(x){return x<10?"0"+x:""+x;}
@@ -42,7 +139,7 @@
       };
       var b=document.createElement("button");
       b.id="btnBackupCoral";b.textContent="💾 Backup";b.title="Baixar backup de todos os dados";
-      b.style.cssText="position:fixed;bottom:12px;right:12px;z-index:9999;background:rgba(123,16,32,0.85);color:#fff;border:none;border-radius:18px;padding:7px 14px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);opacity:0.85;";
+      b.style.cssText="position:fixed;bottom:12px;right:12px;z-index:9999;background:rgba(123,16,32,0.9);color:#fff;border:none;border-radius:18px;padding:7px 14px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);opacity:0.85;";
       b.onclick=window.fazerBackupCoral;
       document.body.appendChild(b);
     })();
