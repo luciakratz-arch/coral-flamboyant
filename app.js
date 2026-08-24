@@ -11937,6 +11937,35 @@ function App() {
       marginBottom: 10
     }
   }, user.name), /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        if (window.__pwaPrompt) {
+          var p = window.__pwaPrompt;
+          window.__pwaPrompt = null;
+          p.prompt();
+        } else {
+          window.fecharModalPWA && window.fecharModalPWA();
+          var modal = document.getElementById("modal-pwa");
+          if (modal) { modal.style.display = "flex"; }
+        }
+      },
+      style: {
+        width: "100%",
+        padding: "9px",
+        background: "#fff",
+        color: cor,
+        border: "1px solid " + cor + "33",
+        borderRadius: 8,
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        marginBottom: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6
+      }
+    }, "\uD83D\uDCF2 Instalar App"), /*#__PURE__*/React.createElement("button", {
     onClick: handleLogout,
     style: {
       width: "100%",
