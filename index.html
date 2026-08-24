@@ -66,6 +66,7 @@
       window.addEventListener('beforeinstallprompt', function(e){
         e.preventDefault();
         deferredPrompt = e;
+        window.__pwaPrompt = e;
         console.log('[PWA] beforeinstallprompt capturado');
       });
 
@@ -91,15 +92,18 @@
 
       window.instalarPWA = function(){
         if(deferredPrompt){
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then(function(r){
-            deferredPrompt = null;
+          var p = deferredPrompt;
+          deferredPrompt = null;
+          p.prompt();
+          p.userChoice.then(function(r){
+            console.log('[PWA] resultado:', r.outcome);
             fecharModalPWA();
           });
+        } else if(isIOS){
+          document.getElementById('pwa-android').style.display='none';
+          document.getElementById('pwa-ios').style.display='block';
         } else {
-          // Fallback: recarrega forçando o navegador a tentar novamente
           fecharModalPWA();
-          window.location.reload();
         }
       };
 
