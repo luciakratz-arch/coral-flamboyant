@@ -507,8 +507,62 @@ function PlayerModal(_ref3) {
     title = _ref3.title,
     onClose = _ref3.onClose,
     letra = _ref3.letra,
-    naipes = _ref3.naipes;
+    naipes = _ref3.naipes,
+    songId = _ref3.songId;
   if (!url) return null;
+  var _useState_split = React.useState(false),
+    showSplit = _useState_split[0],
+    setShowSplit = _useState_split[1];
+  var _useState_letraEdit = React.useState(letra || ""),
+    letraEdit = _useState_letraEdit[0],
+    setLetraEdit = _useState_letraEdit[1];
+  var _useState_letraMode = React.useState("view"),
+    letraMode = _useState_letraMode[0],
+    setLetraMode = _useState_letraMode[1];
+  var _useState_letraSaving = React.useState(false),
+    letraSaving = _useState_letraSaving[0],
+    setLetraSaving = _useState_letraSaving[1];
+  var _useState_letraMsg = React.useState(""),
+    letraMsg = _useState_letraMsg[0],
+    setLetraMsg = _useState_letraMsg[1];
+  var letraRef = React.useRef(null);
+  var hasMedia = url && url !== "letra";
+  var hasLetra = !!(letra && letra.trim().length > 0);
+  var canSplit = hasMedia && hasLetra;
+  var isMobile = window.innerWidth < 600;
+
+  function insertFormat(before, after) {
+    var ta = letraRef.current;
+    if (!ta) return;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var sel = letraEdit.substring(start, end);
+    var newVal = letraEdit.substring(0, start) + before + sel + after + letraEdit.substring(end);
+    setLetraEdit(newVal);
+    setTimeout(function() { ta.focus(); ta.setSelectionRange(start + before.length, end + before.length); }, 10);
+  }
+
+  function salvarLetra() {
+    if (!songId) return;
+    setLetraSaving(true);
+    db.collection("songs").doc(songId).update({ letra: letraEdit, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(function() { setLetraSaving(false); setLetraMode("view"); setLetraMsg("✅ Salvo!"); setTimeout(function() { setLetraMsg(""); }, 2500); })
+      .catch(function() { setLetraSaving(false); setLetraMsg("❌ Erro ao salvar"); });
+  }
+
+  function renderLetraFormatada(txt) {
+    if (!txt) return null;
+    var lines = txt.split("\n");
+    return lines.map(function(line, li) {
+      var parts = line.split(/(\*\*[^*]+\*\*|_[^_]+_)/g);
+      var rendered = parts.map(function(p, i) {
+        if (/^\*\*(.+)\*\*$/.test(p)) return React.createElement("strong", { key: i }, p.slice(2, -2));
+        if (/^_(.+)_$/.test(p)) return React.createElement("em", { key: i }, p.slice(1, -1));
+        return p;
+      });
+      return React.createElement("div", { key: li, style: { minHeight: "1.85em" } }, rendered);
+    });
+  }
+
   function getEmbedUrl(url) {
     // YouTube
     var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
@@ -579,60 +633,36 @@ function PlayerModal(_ref3) {
       return e.target === e.currentTarget && onClose();
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: "100%",
-      maxWidth: 800,
-      background: "#1A1D23",
-      borderRadius: 16,
-      overflow: "hidden",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
-    }
+    style: { width: "100%", maxWidth: canSplit && showSplit ? "100%" : 800, margin: "0 auto", background: "#1A1D23", borderRadius: isMobile ? 0 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : "auto", maxHeight: "96vh", marginTop: isMobile ? 0 : "2vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "14px 18px",
-      borderBottom: "1px solid #333"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      fontWeight: 600,
-      color: "#fff",
-      flex: 1,
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      paddingRight: 12
-    }
-  }, title || "Reproduzindo"), /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    style: {
-      background: "rgba(255,255,255,0.1)",
-      border: "none",
-      borderRadius: 8,
-      width: 32,
-      height: 32,
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "x",
-    size: 16,
-    color: "#fff"
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#000"
-    }
-  }, (type === "youtube" || type === "iframe") && url !== "letra" && /*#__PURE__*/React.createElement("iframe", {
+    style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #333", gap: 8, flexShrink: 0 }
+  },
+    React.createElement("button", {
+      onClick: onClose,
+      style: { background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 8, width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18, color: "#fff", fontWeight: 700 }
+    }, "←"),
+    React.createElement("div", {
+      style: { fontSize: 13, fontWeight: 600, color: "#fff", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+    }, title || "Reproduzindo"),
+    canSplit && React.createElement("button", {
+      onClick: function() { setShowSplit(!showSplit); },
+      title: showSplit ? "Ver separado" : "Ver letra e música juntos",
+      style: { background: showSplit ? "rgba(201,162,39,0.25)" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 12, fontWeight: 600, flexShrink: 0 }
+    }, "❖", !isMobile && " Dividir"),
+    React.createElement("button", {
+      onClick: onClose,
+      style: { background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 8, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
+    }, React.createElement(Icon, { name: "x", size: 16, color: "#fff" }))
+  ),
+  React.createElement("div", {
+    style: { display: "flex", flexDirection: canSplit && showSplit ? (isMobile ? "column" : "row") : "column", flex: 1, overflow: "hidden", minHeight: 0 }
+  hasMedia && /*#__PURE__*/React.createElement("div", {
+    style: { flex: 1, minHeight: 0, overflow: "hidden", background: "#000" }
+  }, (type === "youtube" || type === "iframe") && /*#__PURE__*/React.createElement("iframe", {
     src: embed,
     style: {
       width: "100%",
-      height: window.innerWidth < 600 ? 220 : 450,
+      height: canSplit && showSplit ? (isMobile ? 220 : 400) : (isMobile ? 220 : 450),
       border: "none",
       display: "block"
     },
@@ -686,23 +716,76 @@ function PlayerModal(_ref3) {
       display: "block"
     },
     title: title
-  })), letra && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
-      padding: "20px 24px",
-      background: "#1A1D23",
-      maxHeight: 400,
-      overflowY: "auto"
+      flex: 1,
+      overflowY: "auto",
+      display: "flex",
+      flexDirection: "column",
+      padding: "0 0 12px 0"
     }
-  }, /*#__PURE__*/React.createElement("pre", {
-    style: {
-      fontSize: 14,
-      color: "#EEE",
-      lineHeight: 1.8,
-      fontFamily: "inherit",
-      whiteSpace: "pre-wrap",
-      margin: 0
-    }
-  }, letra)), naipes && /*#__PURE__*/React.createElement("div", {
+  }, letraMode === "edit" ? /*#__PURE__*/React.createElement("div", {
+    style: { display: "flex", flexDirection: "column", flex: 1, padding: "0 16px 0 16px" }
+  },
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }
+    },
+      /*#__PURE__*/React.createElement("button", {
+        onClick: function() {
+          var ta = letraRef.current;
+          if (!ta) return;
+          var s2 = ta.selectionStart, e2 = ta.selectionEnd;
+          var sel = letraEdit.slice(s2, e2);
+          var isBold = sel.startsWith("**") && sel.endsWith("**");
+          var novo = letraEdit.slice(0, s2) + (isBold ? sel.slice(2, -2) : "**" + sel + "**") + letraEdit.slice(e2);
+          setLetraEdit(novo);
+          setTimeout(function() { ta.focus(); ta.setSelectionRange(isBold ? s2 : s2 + 2, isBold ? e2 - 4 : e2 + 4); }, 0);
+        },
+        style: { padding: "3px 10px", borderRadius: 6, border: "1px solid #555", background: "#23262E", color: "#EEE", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }
+      }, "B"),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: function() {
+          var ta = letraRef.current;
+          if (!ta) return;
+          var s2 = ta.selectionStart, e2 = ta.selectionEnd;
+          var sel = letraEdit.slice(s2, e2);
+          var isItalic = sel.startsWith("_") && sel.endsWith("_");
+          var novo = letraEdit.slice(0, s2) + (isItalic ? sel.slice(1, -1) : "_" + sel + "_") + letraEdit.slice(e2);
+          setLetraEdit(novo);
+          setTimeout(function() { ta.focus(); ta.setSelectionRange(isItalic ? s2 : s2 + 1, isItalic ? e2 - 2 : e2 + 2); }, 0);
+        },
+        style: { padding: "3px 10px", borderRadius: 6, border: "1px solid #555", background: "#23262E", color: "#EEE", fontStyle: "italic", cursor: "pointer", fontFamily: "inherit" }
+      }, "I"),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: salvarLetra,
+        disabled: letraSaving,
+        style: { padding: "3px 12px", borderRadius: 6, border: "none", background: "#7B1020", color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }
+      }, letraSaving ? "Salvando..." : "Salvar"),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: function() { setLetraMode("view"); setLetraEdit(letra || ""); },
+        style: { padding: "3px 10px", borderRadius: 6, border: "1px solid #555", background: "transparent", color: "#AAA", cursor: "pointer", fontFamily: "inherit" }
+      }, "Cancelar"),
+      letraMsg && /*#__PURE__*/React.createElement("span", { style: { fontSize: 12, color: "#7B1020" } }, letraMsg)
+    ),
+    /*#__PURE__*/React.createElement("textarea", {
+      ref: letraRef,
+      value: letraEdit,
+      onChange: function(e) { setLetraEdit(e.target.value); },
+      style: { flex: 1, minHeight: 220, background: "#1A1D23", color: "#EEE", border: "1px solid #444", borderRadius: 8, padding: "12px", fontSize: 14, lineHeight: 1.8, fontFamily: "inherit", resize: "vertical" }
+    })
+  ) : (letra || letraEdit) ? /*#__PURE__*/React.createElement("div", {
+    style: { padding: "16px 20px", background: "#1A1D23", flex: 1, overflowY: "auto", position: "relative" }
+  },
+    songId && /*#__PURE__*/React.createElement("button", {
+      onClick: function() { setLetraMode("edit"); },
+      title: "Editar letra",
+      style: { position: "absolute", top: 10, right: 12, padding: "3px 10px", borderRadius: 6, border: "1px solid #555", background: "#23262E", color: "#AAA", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }
+    }, "✏️ Editar"),
+    letraMsg && /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: "#7B1020", marginBottom: 8 } }, letraMsg),
+    /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 14, color: "#EEE", lineHeight: 1.8, whiteSpace: "pre-wrap" }
+    }, renderLetraFormatada(letraEdit || letra))
+  ) : null), naipes && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "16px 18px",
       background: "#1A1D23"
@@ -5275,14 +5358,18 @@ function Repertorio(_ref16) {
   function MaterialBadge(_ref17) {
     var label = _ref17.label,
       icon = _ref17.icon,
-      url = _ref17.url;
+      url = _ref17.url,
+      letra = _ref17.letra,
+      songId = _ref17.songId;
     if (!url) return null;
     return /*#__PURE__*/React.createElement("button", {
       onClick: function onClick(e) {
         e.stopPropagation();
         setPlayer({
           url: url,
-          title: label
+          title: label,
+          letra: letra || null,
+          songId: songId || null
         });
       },
       style: {
@@ -5473,15 +5560,21 @@ function Repertorio(_ref16) {
     }), /*#__PURE__*/React.createElement(MaterialBadge, {
       label: "\xC1udio Original",
       icon: "\uD83C\uDFB5",
-      url: s.audioOriginal
+      url: s.audioOriginal,
+      letra: s.letra,
+      songId: s.id
     }), /*#__PURE__*/React.createElement(MaterialBadge, {
       label: "Arranjo",
       icon: "\uD83C\uDFB5",
-      url: s.audioArranjo
+      url: s.audioArranjo,
+      letra: s.letra,
+      songId: s.id
     }), /*#__PURE__*/React.createElement(MaterialBadge, {
       label: "Playback",
       icon: "\uD83C\uDFA7",
-      url: s.playback
+      url: s.playback,
+      letra: s.letra,
+      songId: s.id
     }), temNaipes(s) && /*#__PURE__*/React.createElement("button", {
       onClick: function onClick(e) {
         e.stopPropagation();
@@ -5520,7 +5613,8 @@ function Repertorio(_ref16) {
         setPlayer({
           url: "letra",
           title: s.title,
-          letra: s.letra
+          letra: s.letra,
+          songId: s.id
         });
       },
       style: {
