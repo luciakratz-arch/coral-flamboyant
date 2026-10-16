@@ -856,7 +856,7 @@ function PlayerModal(_ref3) {
     name: "external-link",
     size: 12,
     color: "#AAA"
-  }), " Abrir em nova aba"))));
+  }), " Abrir em nova aba")))));
 }
 
 // ── MESA DE SOM (página pública para sonoplasta) ──────────────────────────────
