@@ -656,6 +656,7 @@ function PlayerModal(_ref3) {
   ),
   React.createElement("div", {
     style: { display: "flex", flexDirection: canSplit && showSplit ? (isMobile ? "column" : "row") : "column", flex: 1, overflow: "hidden", minHeight: 0 }
+  },
   hasMedia && /*#__PURE__*/React.createElement("div", {
     style: { flex: 1, minHeight: 0, overflow: "hidden", background: "#000" }
   }, (type === "youtube" || type === "iframe") && /*#__PURE__*/React.createElement("iframe", {
