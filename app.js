@@ -12339,7 +12339,7 @@ function App() {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
+      gridTemplateColumns: (window.__FS || 1) >= 1.3 ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))",
       gap: 10
     }
   }, navItems.map(function (item) {
@@ -12356,6 +12356,9 @@ function App() {
         gap: 10,
         padding: "14px 12px",
         minHeight: 56,
+        minWidth: 0,
+        boxSizing: "border-box",
+        overflowWrap: "anywhere",
         borderRadius: 12,
         border: "1px solid " + (ativo ? cor : "#DDD"),
         background: ativo ? cor : "#FFFFFF",
