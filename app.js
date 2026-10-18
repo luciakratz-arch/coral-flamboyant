@@ -31,6 +31,34 @@ var firebaseConfig = {
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
+// ── TAMANHO DAS LETRAS + TELAS ESTREITAS (acessibilidade 60+) ────────────────
+var __FS = 1;
+try { __FS = parseFloat(localStorage.getItem("app_fs")) || 1; } catch (e) {}
+if (__FS < 1 || __FS > 2) __FS = 1;
+window.__FS = __FS;
+var __ce = React.createElement;
+React.createElement = function (t, p) {
+  if (p && p.style && typeof t === "string") {
+    var st = p.style, mudou = false, novo = {};
+    var __fsAtual = window.__FS || 1;
+    if (__fsAtual !== 1 && typeof st.fontSize === "number") {
+      novo.fontSize = Math.round(st.fontSize * __fsAtual * 10) / 10;
+      mudou = true;
+    }
+    if (st.display === "grid" && typeof st.gridTemplateColumns === "string" && window.innerWidth < 700) {
+      var gtc = st.gridTemplateColumns;
+      if (/\d+px/.test(gtc) && gtc.indexOf("minmax") < 0 && gtc.split(" ").length >= 3) {
+        novo.gridTemplateColumns = "1fr 1fr"; mudou = true;
+      } else if (/^\d+px \d*\.?\d*fr$/.test(gtc.trim()) && parseInt(gtc, 10) >= 200) {
+        novo.gridTemplateColumns = "1fr"; mudou = true;
+      }
+    }
+    if (mudou) {
+      arguments[1] = Object.assign({}, p, { style: Object.assign({}, st, novo) });
+    }
+  }
+  return __ce.apply(React, arguments);
+};
 var COR = "#B41020";
 var COR_FUNDO = "#F5EAEA";
 var LOGO_URL = "https://raw.githubusercontent.com/luciakratz-arch/coral-flamboyant/main/unnamed.png";
@@ -124,12 +152,13 @@ function useConfig() {
 var Icon = function Icon(_ref) {
   var name = _ref.name,
     _ref$size = _ref.size,
-    size = _ref$size === void 0 ? 16 : _ref$size,
+    size = (_ref$size === void 0 ? 16 : _ref$size) * Math.min(window.__FS || 1, 1.5),
     color = _ref.color;
   useEffect(function () {
     if (window.lucide) window.lucide.createIcons();
-  }, [name]);
+  }, [name, size]);
   return /*#__PURE__*/React.createElement("i", {
+    key: name + "-" + size,
     "data-lucide": name,
     style: {
       width: size,
@@ -633,7 +662,7 @@ function PlayerModal(_ref3) {
       return e.target === e.currentTarget && onClose();
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: { width: "100%", maxWidth: canSplit && showSplit ? "100%" : 800, margin: "0 auto", background: "#1A1D23", borderRadius: isMobile ? 0 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : "auto", maxHeight: "96vh", marginTop: isMobile ? 0 : "2vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }
+    style: { width: "100%", maxWidth: canSplit && showSplit ? "100%" : 800, margin: "0 auto", background: "#1A1D23", borderRadius: isMobile ? 0 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : (canSplit && showSplit ? "90vh" : "auto"), maxHeight: "96vh", marginTop: isMobile ? 0 : "2vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }
   }, /*#__PURE__*/React.createElement("div", {
     style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #333", gap: 8, flexShrink: 0 }
   },
@@ -658,12 +687,12 @@ function PlayerModal(_ref3) {
     style: { display: "flex", flexDirection: canSplit && showSplit ? (isMobile ? "column" : "row") : "column", flex: 1, overflow: "hidden", minHeight: 0 }
   },
   hasMedia && /*#__PURE__*/React.createElement("div", {
-    style: { flex: 1, minHeight: 0, overflow: "hidden", background: "#000" }
+    style: { flex: canSplit && showSplit ? "0 0 30%" : 1, minHeight: 0, minWidth: 0, overflow: "hidden", display: canSplit && showSplit ? "flex" : "block", flexDirection: "column", background: "#000" }
   }, (type === "youtube" || type === "iframe") && /*#__PURE__*/React.createElement("iframe", {
     src: embed,
     style: {
       width: "100%",
-      height: canSplit && showSplit ? (isMobile ? 220 : 400) : (isMobile ? 220 : 450),
+      height: canSplit && showSplit ? "100%" : (isMobile ? 220 : 450),
       border: "none",
       display: "block"
     },
@@ -712,18 +741,22 @@ function PlayerModal(_ref3) {
     src: embed,
     style: {
       width: "100%",
-      height: window.innerWidth < 600 ? 400 : 600,
+      height: canSplit && showSplit ? "100%" : (window.innerWidth < 600 ? 400 : 600),
       border: "none",
       display: "block"
     },
     title: title
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1,
+      flex: canSplit && showSplit ? "0 0 70%" : 1,
+      minHeight: 0,
+      minWidth: 0,
       overflowY: "auto",
       display: "flex",
       flexDirection: "column",
-      padding: "0 0 12px 0"
+      padding: "0 0 12px 0",
+      borderLeft: canSplit && showSplit && !isMobile ? "1px solid #333" : "none",
+      borderTop: canSplit && showSplit && isMobile ? "1px solid #333" : "none"
     }
   }, letraMode === "edit" ? /*#__PURE__*/React.createElement("div", {
     style: { display: "flex", flexDirection: "column", flex: 1, padding: "0 16px 0 16px" }
@@ -5655,7 +5688,8 @@ function Repertorio(_ref16) {
       return setPlayer(null);
     },
     letra: player.letra,
-    naipes: player.naipes
+    naipes: player.naipes,
+    songId: player.songId
   }));
 }
 
@@ -11791,6 +11825,45 @@ function App() {
   var _useConfig = useConfig(),
     config = _useConfig.config,
     save = _useConfig.save;
+  var _fsState = useState(0),
+    setFsTick = _fsState[1];
+  useEffect(function () {
+    window.__setFS = function (v) {
+      window.__FS = v;
+      try { localStorage.setItem("app_fs", String(v)); } catch (e) {}
+      setFsTick(function (t) { return t + 1; });
+    };
+    return function () { window.__setFS = null; };
+  }, []);
+  var _maisState = useState(false),
+    maisAberto = _maisState[0],
+    setMaisAberto = _maisState[1];
+  var homeTab = user && user.isAdmin ? "painel" : user && user.role === "rh" ? "rh_dashboard" : "inicio";
+  var _navRef = React.useRef({ pop: false });
+  useEffect(function () {
+    function onPop(e) {
+      var t = e.state && e.state.zt;
+      _navRef.current.pop = true;
+      setTab(t || homeTab);
+    }
+    window.addEventListener("popstate", onPop);
+    return function () {
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [homeTab]);
+  useEffect(function () {
+    if (_navRef.current.pop) {
+      _navRef.current.pop = false;
+      return;
+    }
+    if (tab !== homeTab) {
+      try { window.history.pushState({ zt: tab }, ""); } catch (e) {}
+    }
+  }, [tab]);
+  function voltar() {
+    if (window.history.state && window.history.state.zt) window.history.back();
+    else setTab(homeTab);
+  }
   useEffect(function () {
     var unsub = db.collection("members").onSnapshot(function (snap) {
       return setMembers(snap.docs.map(function (d) {
@@ -11911,7 +11984,8 @@ function App() {
       config: config
     })
   };
-  var mobileNav = isAdmin ? [NAV_ADMIN[0], NAV_ADMIN[1], NAV_ADMIN[4], NAV_ADMIN[5], NAV_ADMIN[10]] : user.role === "rh" ? NAV_RH : [NAV_CORISTA[0], NAV_CORISTA[1], NAV_CORISTA[2], NAV_CORISTA[3]];
+  var temMais = isAdmin;
+  var mobileNav = isAdmin ? [NAV_ADMIN[0], NAV_ADMIN[1], NAV_ADMIN[2], NAV_ADMIN[4]] : user.role === "rh" ? NAV_RH : [NAV_CORISTA[0], NAV_CORISTA[1], NAV_CORISTA[2], NAV_CORISTA[3]];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -12099,7 +12173,24 @@ function App() {
       alignItems: "center",
       gap: 10
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, tab !== homeTab && /*#__PURE__*/React.createElement("button", {
+    onClick: voltar,
+    "aria-label": "Voltar",
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: "50%",
+      border: "1px solid rgba(255,255,255,0.5)",
+      background: "rgba(0,0,0,0.2)",
+      color: "#FFFFFF",
+      fontSize: 22,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      flexShrink: 0,
+      lineHeight: 1
+    }
+  }, "\u2190"), /*#__PURE__*/React.createElement("div", {
     style: {
       width: 32,
       height: 32,
@@ -12161,11 +12252,11 @@ function App() {
       zIndex: 150
     },
     className: "nav-mobile"
-  }, mobileNav.map(function (item) {
+  }, mobileNav.concat(temMais ? [{ key: "__mais", label: "Mais", icon: "menu" }] : []).map(function (item) {
     return /*#__PURE__*/React.createElement("button", {
       key: item.key,
       onClick: function onClick() {
-        return setTab(item.key);
+        return item.key === "__mais" ? setMaisAberto(true) : setTab(item.key);
       },
       style: {
         flex: 1,
@@ -12191,6 +12282,95 @@ function App() {
       size: 18,
       color: tab === item.key ? cor : "#CCC"
     }), item.label);
-  })));
+  })), maisAberto && /*#__PURE__*/React.createElement("div", {
+    onClick: function onClick() {
+      return setMaisAberto(false);
+    },
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.6)",
+      zIndex: 10000,
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    style: {
+      width: "100%",
+      maxWidth: 520,
+      maxHeight: "85vh",
+      overflowY: "auto",
+      background: "#FFFFFF",
+      borderRadius: "20px 20px 0 0",
+      padding: "16px 16px 24px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: "#1A1D23"
+    }
+  }, "Menu"), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setMaisAberto(false);
+    },
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: "50%",
+      border: "1px solid #DDD",
+      background: "#F5F5F5",
+      color: "#1A1D23",
+      fontSize: 20,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10
+    }
+  }, navItems.map(function (item) {
+    var ativo = tab === item.key;
+    return /*#__PURE__*/React.createElement("button", {
+      key: item.key,
+      onClick: function onClick() {
+        setTab(item.key);
+        setMaisAberto(false);
+      },
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "14px 12px",
+        minHeight: 56,
+        borderRadius: 12,
+        border: "1px solid " + (ativo ? cor : "#DDD"),
+        background: ativo ? cor : "#FFFFFF",
+        color: ativo ? "#FFFFFF" : "#1A1D23",
+        fontSize: 15,
+        fontWeight: 700,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        textAlign: "left"
+      }
+    }, /*#__PURE__*/React.createElement(Icon, {
+      name: item.icon,
+      size: 20,
+      color: ativo ? "#FFFFFF" : cor
+    }), item.label);
+  })))));
 }
 ReactDOM.render(React.createElement(App), document.getElementById("root"));
