@@ -47,6 +47,14 @@ React.createElement = function (t, p) {
     }
     if (st.display === "grid" && typeof st.gridTemplateColumns === "string" && window.innerWidth < 700) {
       var gtc = st.gridTemplateColumns;
+      var __g = gtc.replace(/\s+/g, "");
+      if (__g === "1fr1fr" || __g === "repeat(2,1fr)") {
+        novo.gridTemplateColumns = (window.__FS || 1) >= 1.3 ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))";
+        mudou = true;
+      } else if (__g === "1fr1fr1fr" || __g === "repeat(3,1fr)" || __g === "repeat(4,1fr)") {
+        novo.gridTemplateColumns = (window.__FS || 1) >= 1.15 ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))";
+        mudou = true;
+      }
       if (/\d+px/.test(gtc) && gtc.indexOf("minmax") < 0 && gtc.split(" ").length >= 3) {
         novo.gridTemplateColumns = "1fr 1fr"; mudou = true;
       } else if (/^\d+px \d*\.?\d*fr$/.test(gtc.trim()) && parseInt(gtc, 10) >= 200) {
@@ -6649,7 +6657,7 @@ function Apresentacao(_ref21) {
   }, "Abrir"))), eventoSel && setlist.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
+      gridTemplateColumns: window.innerWidth < 800 ? "minmax(0, 1fr)" : "1fr 1fr",
       gap: 16
     }
   }, /*#__PURE__*/React.createElement("div", {
