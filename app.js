@@ -547,9 +547,6 @@ function PlayerModal(_ref3) {
     naipes = _ref3.naipes,
     songId = _ref3.songId;
   if (!url) return null;
-  var _useState_split = React.useState(false),
-    showSplit = _useState_split[0],
-    setShowSplit = _useState_split[1];
   var _useState_letraEdit = React.useState(letra || ""),
     letraEdit = _useState_letraEdit[0],
     setLetraEdit = _useState_letraEdit[1];
@@ -670,7 +667,7 @@ function PlayerModal(_ref3) {
       return e.target === e.currentTarget && onClose();
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: { width: "100%", maxWidth: canSplit && showSplit ? "100%" : 800, margin: "0 auto", background: "#1A1D23", borderRadius: isMobile ? 0 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : (canSplit && showSplit ? "90vh" : "auto"), maxHeight: "96vh", marginTop: isMobile ? 0 : "2vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }
+    style: { width: "100%", maxWidth: 800, margin: "0 auto", background: "#1A1D23", borderRadius: isMobile ? 0 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : (canSplit ? "90vh" : "auto"), maxHeight: "96vh", marginTop: isMobile ? 0 : "2vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }
   }, /*#__PURE__*/React.createElement("div", {
     style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #333", gap: 8, flexShrink: 0 }
   },
@@ -681,26 +678,21 @@ function PlayerModal(_ref3) {
     React.createElement("div", {
       style: { fontSize: 13, fontWeight: 600, color: "#fff", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
     }, title || "Reproduzindo"),
-    canSplit && React.createElement("button", {
-      onClick: function() { setShowSplit(!showSplit); },
-      title: showSplit ? "Ver separado" : "Ver letra e música juntos",
-      style: { background: showSplit ? "rgba(201,162,39,0.25)" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 12, fontWeight: 600, flexShrink: 0 }
-    }, "❖", !isMobile && " Dividir"),
     React.createElement("button", {
       onClick: onClose,
       style: { background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 8, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }
     }, React.createElement(Icon, { name: "x", size: 16, color: "#fff" }))
   ),
   React.createElement("div", {
-    style: { display: "flex", flexDirection: canSplit && showSplit ? (isMobile ? "column" : "row") : "column", flex: 1, overflow: "hidden", minHeight: 0 }
+    style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minHeight: 0 }
   },
   hasMedia && /*#__PURE__*/React.createElement("div", {
-    style: { flex: canSplit && showSplit ? "0 0 30%" : 1, minHeight: 0, minWidth: 0, overflow: "hidden", display: canSplit && showSplit ? "flex" : "block", flexDirection: "column", background: "#000" }
+    style: { flex: canSplit ? "0 0 30%" : 1, minHeight: 0, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column", background: "#000" }
   }, (type === "youtube" || type === "iframe") && /*#__PURE__*/React.createElement("iframe", {
     src: embed,
     style: {
       width: "100%",
-      height: canSplit && showSplit ? "100%" : (isMobile ? 220 : 450),
+      height: canSplit ? "100%" : (isMobile ? 220 : 450),
       border: "none",
       display: "block"
     },
@@ -749,22 +741,22 @@ function PlayerModal(_ref3) {
     src: embed,
     style: {
       width: "100%",
-      height: canSplit && showSplit ? "100%" : (window.innerWidth < 600 ? 400 : 600),
+      height: canSplit ? "100%" : (window.innerWidth < 600 ? 400 : 600),
       border: "none",
       display: "block"
     },
     title: title
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: canSplit && showSplit ? "0 0 70%" : 1,
+      flex: canSplit ? "0 0 70%" : 1,
       minHeight: 0,
       minWidth: 0,
       overflowY: "auto",
       display: "flex",
       flexDirection: "column",
       padding: "0 0 12px 0",
-      borderLeft: canSplit && showSplit && !isMobile ? "1px solid #333" : "none",
-      borderTop: canSplit && showSplit && isMobile ? "1px solid #333" : "none"
+      borderLeft: "none",
+      borderTop: canSplit ? "1px solid #333" : "none"
     }
   }, letraMode === "edit" ? /*#__PURE__*/React.createElement("div", {
     style: { display: "flex", flexDirection: "column", flex: 1, padding: "0 16px 0 16px" }
