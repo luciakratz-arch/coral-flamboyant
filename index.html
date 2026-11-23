@@ -72,6 +72,19 @@
     var o=document.createElement('button');o.className='ouvir';o.id='fs-ouvir';o.textContent='🔊';o.title='Ouvir o que está na tela';o.setAttribute('aria-label','Ouvir o que está na tela');
     box.appendChild(m);box.appendChild(p);box.appendChild(o);
     window.addEventListener('load',function(){document.body.appendChild(box);});
+    // Só aparece na tela inicial (Painel). Some nas outras páginas e quando há janela aberta por cima.
+    function ajustar(){
+      var mostrar=true;
+      var nav=document.querySelector('.nav-mobile');
+      if(nav && nav.offsetParent!==null){
+        var bs=nav.querySelectorAll('button');
+        if(bs.length){var c=getComputedStyle(bs[0]).borderTopColor; if(!c||/rgba\(0, 0, 0, 0\)|transparent/.test(c)) mostrar=false;}
+      }
+      var fx=document.querySelectorAll('#root [style*="position: fixed"]');
+      for(var k=0;k<fx.length;k++){var el=fx[k]; if(el.classList.contains('nav-mobile')||el.tagName==='NAV') continue; var r=el.getBoundingClientRect(); if(r.width>200&&r.height>200){mostrar=false;break;}}
+      box.style.display=mostrar?'flex':'none';
+    }
+    window.addEventListener('load',function(){ajustar(); new MutationObserver(function(){ajustar();}).observe(document.getElementById('root'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(ajustar,700);});
   })();
   </script>
 
@@ -141,7 +154,7 @@
   })();
   </script>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
 
     <!-- Modal PWA -->
     <div id="modal-pwa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);">

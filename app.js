@@ -2480,6 +2480,8 @@ function Integrantes(_ref0) {
     var ok = !busca || m.name.toLowerCase().includes(q) || (m.voice || "").toLowerCase().includes(q) || (m.funcao || "").toLowerCase().includes(q);
     var of = filtro === "Todos" || (filtro === "Ativos" ? m.active : filtro === "Inativos" ? !m.active : m.voice === filtro);
     return ok && of;
+  }).sort(function (a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
   });
   var naipeColor = {
     Soprano: COR,
@@ -8735,9 +8737,7 @@ function ChamadaLista(props) {
   var ativos = membros.filter(function (m) {
     return m.active !== false && m.name;
   }).sort(function (a, b) {
-    var va = a.voice || "zzz", vb = b.voice || "zzz";
-    if (va !== vb) return va > vb ? 1 : -1;
-    return String(a.name).localeCompare(String(b.name), "pt-BR");
+        return String(a.name).localeCompare(String(b.name), "pt-BR");
   });
   function abrir() {
     // Se já existem presenças (por QR ou por uma chamada anterior), quem não tem registro começa como "faltou".
@@ -8821,7 +8821,7 @@ function ChamadaLista(props) {
   var grupos = [];
   ativos.forEach(function (m) {
     if (termo && String(m.name).toLowerCase().indexOf(termo) < 0) return;
-    var nome = m.voice || "Sem naipe";
+    var nome = "";
     var g = grupos.filter(function (x) {
       return x.nome === nome;
     })[0];
@@ -8845,7 +8845,7 @@ function ChamadaLista(props) {
         React.createElement("span", { style: { fontSize: 13, color: "#B91C1C", fontWeight: 700 } }, totalAus + " faltas")),
       grupos.map(function (g) {
         return React.createElement("div", { key: g.nome, style: { marginBottom: 10 } },
-          React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: cor, textTransform: "uppercase", letterSpacing: 1, margin: "6px 0" } }, g.nome),
+          g.nome ? React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: cor, textTransform: "uppercase", letterSpacing: 1, margin: "6px 0" } }, g.nome) : null,
           g.lista.map(function (m) {
             var faltou = !!ausentes[m.id];
             return React.createElement("button", {
